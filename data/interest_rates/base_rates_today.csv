@@ -1,0 +1,36 @@
+bank_code,bank_name,base_rate,base_lending_rate,indicative_eff_lending_rate,base_financing_rate
+AFFINBANK,Affin Bank,2.7,5.56,3.3,
+ALLIANCEB,Alliance Bank,2.57,5.42,3.11,
+AMBANK,AmBank,2.6,5.45,3.25,
+BANGKOK,Bangkok Bank Berhad,3.22,5.87,4.42,
+BANKCHINA,Bank of China (Malaysia) Berhad,2.55,5.35,3.55,
+CIMB BANK,CIMB Bank Berhad,2.75,5.6,3.5,
+CITIBANK,Citibank Berhad,2.4,5.55,3.2,
+,Hong Leong Bank Malaysia Berhad,2.63,5.64,3.5,
+,HSBC Bank Malaysia Berhad,2.39,5.49,3.5,
+,Industrial and Commercial Bank of China (Malaysia) Berhad,2.52,5.45,3.47,
+,Malayan Banking Berhad,1.75,5.4,3.25,
+,OCBC Bank (Malaysia) Berhad,2.58,5.51,3.45,
+,Public Bank Berhad,2.27,5.47,3.1,
+,RHB Bank Berhad,2.5,5.45,3.5,
+,Standard Chartered Bank Malaysia Berhad,2.27,5.45,3.5,
+,United Overseas Bank (Malaysia) Bhd.,2.61,5.57,3.36,
+AFFINIB,Affin Islamic Bank Berhad,2.7,,3.3,5.56
+RJHI,Al Rajhi Banking & Investment Corporation (Malaysia) Berhad,2.85,,4.2,5.75
+,Alliance Islamic Bank Berhad,2.57,,3.11,5.42
+,AmBank Islamic Berhad,2.6,,3.25,5.45
+,Bank Islam Malaysia Berhad,2.52,,3.25,5.47
+,Bank Muamalat Malaysia Berhad,2.56,,3.56,5.56
+,CIMB Islamic Bank Berhad,2.75,,3.5,5.6
+,Hong Leong Islamic Bank Berhad,2.63,,3.35,5.64
+,HSBC Amanah Malaysia Berhad,2.39,,3.5,5.49
+,Kuwait Finance House (Malaysia) Berhad,2.25,,3.3,6.14
+,Maybank Islamic Berhad,1.75,,3.25,5.4
+,MBSB Bank Berhad,2.65,,3.2,5.5
+,OCBC Al-Amin Bank Berhad,2.58,,3.45,5.52
+,Public Islamic Bank Berhad,2.27,,3.1,5.47
+,RHB Islamic Bank Berhad,2.5,,3.5,5.45
+,Standard Chartered Saadiq Berhad,2.27,,3.5,5.45
+BKRMB,Bank Kerjasama Rakyat Malaysia Berhad,2.6,,3.4,5.58
+,Agrobank,2.35,,0.0,5.5
+,Bank Simpanan Nasional,2.6,,3.1,5.35
