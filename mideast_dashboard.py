@@ -101,14 +101,12 @@ gdp_quarterly = load_csv("gdp", "gdp_quarterly.csv")
 # 5. Interest rates
 opr = load_csv("interest_rates", "opr_historical.csv")
 
-# 6. PPI — fetch from DOSM API (headline + by section)
-print("  Fetching PPI from DOSM...")
-ppi = fetch_dosm("ppi")
-ppi_1d = fetch_dosm("ppi_1d")
+# 6. PPI (local CSV — pre-fetched from DOSM)
+ppi = load_csv("inflation", "ppi.csv")
+ppi_1d = load_csv("inflation", "ppi_1d.csv")
 
-# 8. Fuel prices
-print("  Fetching fuel prices from DOSM...")
-fuel_prices = fetch_dosm("fuelprice")
+# 8. Fuel prices (local CSV — pre-fetched from DOSM)
+fuel_prices = load_csv("inflation", "fuelprice.csv")
 
 print("Data ready.\n")
 
