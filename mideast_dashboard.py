@@ -79,9 +79,9 @@ usd_myr_daily = load_supabase("usd_myr_daily")
 if not usd_myr_daily.empty:
     usd_myr_daily["mid"] = (usd_myr_daily["buying"] + usd_myr_daily["selling"]) / 2
 
-# 2. CPI — last 5 years (heatmap shows 24 months, components show 5 years)
-cpi_headline = load_supabase("cpi_headline", date_gte="2020-01-01")
-cpi_core = load_supabase("cpi_core", date_gte="2020-01-01")
+# 2. CPI — since 2022 (14 divisions × ~48 months = ~672 rows, well under 1000)
+cpi_headline = load_supabase("cpi_headline", date_gte="2022-01-01")
+cpi_core = load_supabase("cpi_core", date_gte="2022-01-01")
 
 # 3. Trade — last 5 years
 trade = load_supabase("trade_by_commodity", date_gte="2020-01-01")
