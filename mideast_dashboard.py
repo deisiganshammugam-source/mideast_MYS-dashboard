@@ -289,7 +289,16 @@ def latest_change(df, col):
 
 # ── Compute KPIs ──────────────────────────────────────────────────────────────
 
-usd_val, usd_chg, usd_date = latest_change(usd_myr, "usd_myr")
+# Use daily rate for KPI (more current than monthly average)
+if not usd_myr_daily.empty:
+    last_daily = usd_myr_daily.iloc[-1]
+    prev_daily = usd_myr_daily.iloc[-2] if len(usd_myr_daily) >= 2 else last_daily
+    usd_val = f"{last_daily['mid']:.4f}"
+    chg = last_daily["mid"] - prev_daily["mid"]
+    usd_chg = f"{chg:+.4f} d/d"
+    usd_date = last_daily["date"].strftime("%d %b %Y")
+else:
+    usd_val, usd_chg, usd_date = latest_change(usd_myr, "usd_myr")
 headline_val, headline_date = latest_val(cpi_overall, "headline_yoy", "{:.1f}%")
 transport_val, transport_date = latest_val(cpi_transport, "transport_yoy", "{:.1f}%")
 food_val, food_date = latest_val(cpi_food, "food_yoy", "{:.1f}%")
