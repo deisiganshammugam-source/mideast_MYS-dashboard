@@ -696,20 +696,40 @@ app.layout = html.Div(style={
                "marginBottom": "12px"}
     ),
 
+    # Row 1: Exports & Imports bars
     html.Div([
         card([
-            html.H3("Overall Trade Balance  (RM)",
+            html.H3("Overall Exports & Imports  (RM billion)",
                     style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
                            "fontWeight": "600", "textTransform": "uppercase"}),
-            dcc.Graph(id="trade-overall-chart", style={"height": "400px"},
+            dcc.Graph(id="trade-overall-chart", style={"height": "340px"},
                       config={"displayModeBar": False}),
         ], {"flex": "1"}),
 
         card([
-            html.H3("Mineral Fuels Trade  (SITC 3, RM)",
+            html.H3("Mineral Fuels Exports & Imports  (SITC 3, RM billion)",
                     style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
                            "fontWeight": "600", "textTransform": "uppercase"}),
-            dcc.Graph(id="trade-petroleum-chart", style={"height": "400px"},
+            dcc.Graph(id="trade-petroleum-chart", style={"height": "340px"},
+                      config={"displayModeBar": False}),
+        ], {"flex": "1"}),
+    ], style={"display": "flex", "gap": "16px", "marginBottom": "16px", "flexWrap": "wrap"}),
+
+    # Row 2: Trade balance lines
+    html.Div([
+        card([
+            html.H3("Overall Trade Balance  (RM billion)",
+                    style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
+                           "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Graph(id="trade-balance-chart", style={"height": "280px"},
+                      config={"displayModeBar": False}),
+        ], {"flex": "1"}),
+
+        card([
+            html.H3("Mineral Fuels Net Balance  (SITC 3, RM billion)",
+                    style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
+                           "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Graph(id="fuel-balance-chart", style={"height": "280px"},
                       config={"displayModeBar": False}),
         ], {"flex": "1"}),
     ], style={"display": "flex", "gap": "16px", "marginBottom": "20px", "flexWrap": "wrap"}),
@@ -1294,26 +1314,11 @@ def trade_overall_chart(_):
     fig.add_trace(go.Bar(x=d["date"], y=d["imports"] / 1e9,
                         name="Imports", marker_color=COLORS["accent"]))
 
-    # Trade balance line
-    fig.add_trace(go.Scatter(
-        x=d["date"], y=d["balance"] / 1e9, name="Trade Balance",
-        mode="lines+markers", line=dict(color=COLORS["gold"], width=2.5),
-        marker=dict(size=5),
-        hovertemplate="<b>%{x|%b %Y}</b><br>Balance: RM%{y:.1f}bn<extra></extra>",
-    ))
-
-    # Latest values annotation
-    if not d.empty:
-        last = d.iloc[-1]
-        fig.add_annotation(
-            text=f"Exports: RM {last['exports']/1e9:.0f}bn | Imports: RM {last['imports']/1e9:.0f}bn<br>"
-                 f"Balance: RM {last['balance']/1e9:+.1f}bn  ({last['date'].strftime('%b %Y')})",
-            xref="paper", yref="paper", x=0.02, y=0.98,
-            showarrow=False, font=dict(color=COLORS["text"], size=11),
-            align="left", bgcolor="rgba(0,0,0,0.5)", borderpad=6,
-        )
-
     fig.update_layout(**LAYOUT, barmode="group", yaxis_title="RM billion")
+    # Dynamic y-axis: start near the data minimum
+    all_vals = pd.concat([d["exports"], d["imports"]]) / 1e9
+    ymin = all_vals.min() * 0.85
+    fig.update_yaxes(range=[ymin, all_vals.max() * 1.05])
     return fig
 
 
@@ -1333,26 +1338,80 @@ def trade_petroleum_chart(_):
     fig.add_trace(go.Bar(x=d["date"], y=d["imports"] / 1e9,
                         name="Fuel Imports", marker_color=COLORS["accent"]))
 
-    # Net balance line
+    fig.update_layout(**LAYOUT, barmode="group", yaxis_title="RM billion")
+    # Dynamic y-axis
+    all_vals = pd.concat([d["exports"], d["imports"]]) / 1e9
+    ymin = all_vals.min() * 0.85
+    fig.update_yaxes(range=[ymin, all_vals.max() * 1.05])
+    return fig
+
+
+# --- Trade Balance (separate line chart) ---
+@app.callback(Output("trade-balance-chart", "figure"), Input("refresh-interval", "n_intervals"))
+def trade_balance_chart(_):
+    fig = go.Figure()
+    if trade_overall.empty:
+        fig.update_layout(**LAYOUT)
+        return fig
+
+    d = trade_overall[trade_overall["date"] >= datetime.now() - timedelta(days=365)].copy()
+
+    # Area fill — green above zero, red below
     fig.add_trace(go.Scatter(
-        x=d["date"], y=d["balance"] / 1e9, name="Net Balance",
-        mode="lines+markers", line=dict(color=COLORS["gold"], width=2.5),
-        marker=dict(size=5),
-        hovertemplate="<b>%{x|%b %Y}</b><br>Net: RM%{y:+.1f}bn<extra></extra>",
+        x=d["date"], y=d["balance"] / 1e9,
+        mode="lines+markers", name="Trade Balance",
+        line=dict(color=COLORS["gold"], width=2.5),
+        marker=dict(size=5, color=COLORS["gold"]),
+        fill="tozeroy", fillcolor="rgba(243,156,18,0.15)",
+        hovertemplate="<b>%{x|%b %Y}</b><br>Balance: RM%{y:+.1f}bn<extra></extra>",
     ))
 
-    # Latest net position annotation
     if not d.empty:
         last = d.iloc[-1]
-        net = last["balance"] / 1e9
         fig.add_annotation(
-            text=f"Net fuel position: RM {net:+.1f}bn  ({last['date'].strftime('%b %Y')})",
+            text=f"Latest: RM {last['balance']/1e9:+.1f}bn  ({last['date'].strftime('%b %Y')})",
             xref="paper", yref="paper", x=0.02, y=0.98,
             showarrow=False, font=dict(color=COLORS["gold"], size=11),
             align="left", bgcolor="rgba(0,0,0,0.5)", borderpad=6,
         )
 
-    fig.update_layout(**LAYOUT, barmode="group", yaxis_title="RM billion")
+    fig.add_hline(y=0, line_dash="dash", line_color=COLORS["subtext"], line_width=1)
+    fig.update_layout(**LAYOUT, yaxis_title="RM billion")
+    return fig
+
+
+# --- Fuel Net Balance (separate line chart) ---
+@app.callback(Output("fuel-balance-chart", "figure"), Input("refresh-interval", "n_intervals"))
+def fuel_balance_chart(_):
+    fig = go.Figure()
+    if trade_petroleum.empty:
+        fig.add_annotation(text="No SITC 3 data", xref="paper", yref="paper",
+                          x=0.5, y=0.5, showarrow=False, font=dict(color=COLORS["subtext"]))
+        fig.update_layout(**LAYOUT)
+        return fig
+
+    d = trade_petroleum[trade_petroleum["date"] >= datetime.now() - timedelta(days=365)].copy()
+
+    fig.add_trace(go.Scatter(
+        x=d["date"], y=d["balance"] / 1e9,
+        mode="lines+markers", name="Net Fuel Balance",
+        line=dict(color=COLORS["green"], width=2.5),
+        marker=dict(size=5, color=COLORS["green"]),
+        fill="tozeroy", fillcolor="rgba(39,174,96,0.15)",
+        hovertemplate="<b>%{x|%b %Y}</b><br>Net: RM%{y:+.1f}bn<extra></extra>",
+    ))
+
+    if not d.empty:
+        last = d.iloc[-1]
+        fig.add_annotation(
+            text=f"Net fuel: RM {last['balance']/1e9:+.1f}bn  ({last['date'].strftime('%b %Y')})",
+            xref="paper", yref="paper", x=0.02, y=0.98,
+            showarrow=False, font=dict(color=COLORS["green"], size=11),
+            align="left", bgcolor="rgba(0,0,0,0.5)", borderpad=6,
+        )
+
+    fig.add_hline(y=0, line_dash="dash", line_color=COLORS["subtext"], line_width=1)
+    fig.update_layout(**LAYOUT, yaxis_title="RM billion")
     return fig
 
 
