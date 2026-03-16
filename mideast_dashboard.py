@@ -790,7 +790,49 @@ app.layout = html.Div(style={
                        "fontWeight": "600", "textTransform": "uppercase"}),
         dcc.Graph(id="gdp-growth-chart", style={"height": "300px"},
                   config={"displayModeBar": False}),
-    ], {"marginBottom": "20px"}),
+    ], {"marginBottom": "16px"}),
+
+    # Supply-side: GDP by sector
+    html.Div([
+        card([
+            html.H3("Agriculture",
+                    style={"margin": "0 0 8px", "fontSize": "12px", "color": COLORS["green"],
+                           "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Graph(id="gdp-agri-chart", style={"height": "220px"},
+                      config={"displayModeBar": False}),
+        ], {"flex": "1"}),
+        card([
+            html.H3("Mining & Quarrying",
+                    style={"margin": "0 0 8px", "fontSize": "12px", "color": COLORS["gold"],
+                           "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Graph(id="gdp-mining-chart", style={"height": "220px"},
+                      config={"displayModeBar": False}),
+        ], {"flex": "1"}),
+        card([
+            html.H3("Manufacturing",
+                    style={"margin": "0 0 8px", "fontSize": "12px", "color": COLORS["secondary"],
+                           "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Graph(id="gdp-mfg-chart", style={"height": "220px"},
+                      config={"displayModeBar": False}),
+        ], {"flex": "1"}),
+    ], style={"display": "flex", "gap": "12px", "marginBottom": "12px", "flexWrap": "wrap"}),
+
+    html.Div([
+        card([
+            html.H3("Construction",
+                    style={"margin": "0 0 8px", "fontSize": "12px", "color": COLORS["orange"],
+                           "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Graph(id="gdp-cons-chart", style={"height": "220px"},
+                      config={"displayModeBar": False}),
+        ], {"flex": "1"}),
+        card([
+            html.H3("Services",
+                    style={"margin": "0 0 8px", "fontSize": "12px", "color": COLORS["purple"],
+                           "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Graph(id="gdp-services-chart", style={"height": "220px"},
+                      config={"displayModeBar": False}),
+        ], {"flex": "1"}),
+    ], style={"display": "flex", "gap": "12px", "marginBottom": "20px", "flexWrap": "wrap"}),
 
     # ══════════════════════════════════════════════════════════════════════════
     # SECTION 5: FISCAL VULNERABILITY
@@ -1563,6 +1605,61 @@ def gdp_growth_chart(_):
                    f"{last['gdp_yoy']:.1f}%", COLORS["text"])
     fig.update_layout(**LAYOUT, yaxis_title="% YoY")
     return fig
+
+
+# --- GDP by Sector (individual sparkline charts) ---
+GDP_SECTORS = {
+    "gdp-agri-chart": ("p1", COLORS["green"], "Agriculture"),
+    "gdp-mining-chart": ("p2", COLORS["gold"], "Mining & Quarrying"),
+    "gdp-mfg-chart": ("p3", COLORS["secondary"], "Manufacturing"),
+    "gdp-cons-chart": ("p4", COLORS["orange"], "Construction"),
+    "gdp-services-chart": ("p5", COLORS["purple"], "Services"),
+}
+
+def make_sector_chart(sector_code, color, label):
+    fig = go.Figure()
+    if gdp_sector.empty or "series" not in gdp_sector.columns:
+        fig.update_layout(**LAYOUT)
+        return fig
+
+    d = gdp_sector[(gdp_sector["sector"] == sector_code) &
+                   (gdp_sector["series"] == "growth_yoy") &
+                   (gdp_sector["date"] >= datetime(2019, 1, 1))].copy()
+    d["value"] = pd.to_numeric(d["value"], errors="coerce")
+
+    if d.empty:
+        fig.update_layout(**LAYOUT)
+        return fig
+
+    colors = [color if v >= 0 else COLORS["accent"] for v in d["value"]]
+    fig.add_trace(go.Bar(
+        x=d["date"], y=d["value"],
+        marker_color=colors,
+        hovertemplate=f"<b>{label}</b><br>%{{x|%Y Q}}: %{{y:.1f}}%<extra></extra>",
+    ))
+    fig.add_hline(y=0, line_color=COLORS["subtext"], line_width=1)
+
+    # Latest value
+    if not d.empty:
+        last = d.iloc[-1]
+        mark_latest(fig, last["date"], last["value"],
+                   f"{last['value']:.1f}%", color)
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family=FONT, color=COLORS["text"]),
+        margin=dict(t=10, b=30, l=40, r=10),
+        xaxis=dict(gridcolor=COLORS["border"], showgrid=False),
+        yaxis=dict(gridcolor=COLORS["border"], showgrid=True, zeroline=False,
+                   title="% YoY"),
+        showlegend=False,
+    )
+    return fig
+
+for chart_id, (code, color, label) in GDP_SECTORS.items():
+    @app.callback(Output(chart_id, "figure"), Input("refresh-interval", "n_intervals"))
+    def _sector_cb(_, _code=code, _color=color, _label=label):
+        return make_sector_chart(_code, _color, _label)
 
 
 @app.callback(Output("ppi-headline-chart", "figure"), Input("refresh-interval", "n_intervals"))
