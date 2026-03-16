@@ -756,12 +756,13 @@ app.layout = html.Div(style={
             dcc.Dropdown(
                 id="ppi-headline-range",
                 options=[
+                    {"label": "Last 12 months", "value": "12M"},
+                    {"label": "Last 2 years", "value": "2Y"},
                     {"label": "Since 2022", "value": "2022"},
-                    {"label": "Since 2021", "value": "2021"},
                     {"label": "Since 2020", "value": "2020"},
                     {"label": "All (since 2010)", "value": "2010"},
                 ],
-                value="2022",
+                value="2Y",
                 clearable=False,
                 style={"background": COLORS["card"], "color": "#000",
                        "marginBottom": "8px", "maxWidth": "180px"},
@@ -778,12 +779,13 @@ app.layout = html.Div(style={
             dcc.Dropdown(
                 id="ppi-sections-range",
                 options=[
+                    {"label": "Last 12 months", "value": "12M"},
+                    {"label": "Last 2 years", "value": "2Y"},
                     {"label": "Since 2022", "value": "2022"},
-                    {"label": "Since 2021", "value": "2021"},
                     {"label": "Since 2020", "value": "2020"},
                     {"label": "All (since 2010)", "value": "2010"},
                 ],
-                value="2022",
+                value="2Y",
                 clearable=False,
                 style={"background": COLORS["card"], "color": "#000",
                        "marginBottom": "8px", "maxWidth": "180px"},
@@ -942,9 +944,9 @@ app.layout = html.Div(style={
                     html.Div("REVENUE UPSIDE", style={"color": COLORS["green"], "fontWeight": "700",
                              "fontSize": "13px", "marginBottom": "8px"}),
                     html.Ul([
-                        html.Li("Petronas dividends & special dividends"),
                         html.Li("Petroleum Income Tax (PITA)"),
                         html.Li("Petroleum royalties to states"),
+                        html.Li("Oil-related export duties"),
                         html.Li("SST on petroleum products"),
                     ], style={"color": COLORS["text"], "fontSize": "12px", "lineHeight": "1.8"}),
                 ], style={"flex": "1", "padding": "12px", "background": "rgba(39,174,96,0.1)",
@@ -1772,7 +1774,12 @@ def ppi_headline_chart(year_start, _):
         fig.update_layout(**LAYOUT)
         return fig
 
-    cutoff = datetime(int(year_start), 1, 1)
+    if year_start == "12M":
+        cutoff = datetime.now() - timedelta(days=365)
+    elif year_start == "2Y":
+        cutoff = datetime.now() - timedelta(days=730)
+    else:
+        cutoff = datetime(int(year_start), 1, 1)
     d = ppi_ts[ppi_ts["date"] >= cutoff]
 
     fig.add_trace(go.Scatter(
@@ -1807,7 +1814,12 @@ def ppi_sections_chart(year_start, _):
         fig.update_layout(**LAYOUT)
         return fig
 
-    cutoff = datetime(int(year_start), 1, 1)
+    if year_start == "12M":
+        cutoff = datetime.now() - timedelta(days=365)
+    elif year_start == "2Y":
+        cutoff = datetime.now() - timedelta(days=730)
+    else:
+        cutoff = datetime(int(year_start), 1, 1)
     section_colors = {
         "A": COLORS["green"],       # Agriculture
         "B": COLORS["gold"],        # Mining — oil/gas upstream
