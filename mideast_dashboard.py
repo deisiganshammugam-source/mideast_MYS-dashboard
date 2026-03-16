@@ -528,29 +528,53 @@ app.layout = html.Div(style={
 
     # ── KPI Row 1 — Macro snapshot ──────────────────────────────────────────
     html.Div([
-        card(kpi("USD/MYR", usd_val, f"{usd_chg}  ({usd_date})",
-                 COLORS["down"] if usd_chg.startswith("+") else COLORS["up"]), {"flex": "1"}),
-        card(kpi("Headline CPI (YoY)", headline_val, headline_date, COLORS["accent"]), {"flex": "1"}),
-        card(kpi("Transport CPI (YoY)", transport_val, transport_date, COLORS["orange"]), {"flex": "1"}),
-        card(kpi("Food CPI (YoY)", food_val, food_date, COLORS["gold"]), {"flex": "1"}),
+        card([kpi("USD/MYR", usd_val, f"{usd_chg}  ({usd_date})",
+                  COLORS["down"] if usd_chg.startswith("+") else COLORS["up"]),
+              html.Div("Source: BNM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("Headline CPI (YoY)", headline_val, headline_date, COLORS["accent"]),
+              html.Div("Source: DOSM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("Transport CPI (YoY)", transport_val, transport_date, COLORS["orange"]),
+              html.Div("Source: DOSM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("Food CPI (YoY)", food_val, food_date, COLORS["gold"]),
+              html.Div("Source: DOSM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
     ], style={"display": "flex", "gap": "12px", "marginBottom": "8px", "flexWrap": "wrap"}),
 
     # KPI Row 2 — Energy benchmarks
     html.Div([
-        card(kpi("Brent Crude", brent_val, f"{brent_ytd}  |  {brent_feb}\n{brent_date}",
-                 COLORS["accent"]), {"flex": "1"}),
-        card(kpi("Henry Hub NG", ng_val, f"{ng_ytd}  |  {ng_feb}\n{ng_date}",
-                 COLORS["gold"]), {"flex": "1"}),
-        card(kpi("Fuel Trade Balance", petro_bal_val, f"SITC 3 · {petro_bal_date}", COLORS["green"]), {"flex": "1"}),
-        card(kpi("OPR", opr_val, opr_date, COLORS["secondary"]), {"flex": "1"}),
+        card([kpi("Brent Crude", brent_val, f"{brent_ytd}  |  {brent_feb}\n{brent_date}",
+                  COLORS["accent"]),
+              html.Div("Source: Yahoo Finance (BZ=F)", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("Henry Hub NG", ng_val, f"{ng_ytd}  |  {ng_feb}\n{ng_date}",
+                  COLORS["gold"]),
+              html.Div("Source: Yahoo Finance (NG=F)", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("Fuel Trade Balance", petro_bal_val, f"SITC 3 · {petro_bal_date}", COLORS["green"]),
+              html.Div("Source: DOSM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("OPR", opr_val, opr_date, COLORS["secondary"]),
+              html.Div("Source: BNM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
     ], style={"display": "flex", "gap": "12px", "marginBottom": "8px", "flexWrap": "wrap"}),
 
     # KPI Row 3 — fuel prices (subsidized + market)
     html.Div([
-        card(kpi("RON95 (BUDI)", ron95_val, f"Subsidized · {fuel_date_str}", COLORS["green"]), {"flex": "1"}),
-        card(kpi("RON95 (Market)", ron95_market_val, f"Ceiling · {fuel_date_str}", COLORS["orange"]), {"flex": "1"}),
-        card(kpi("Diesel (Targeted)", diesel_val, f"Subsidized · {fuel_date_str}", COLORS["green"]), {"flex": "1"}),
-        card(kpi("Diesel (Market)", diesel_market_val, f"Unsubsidized · {fuel_date_str}", COLORS["orange"]), {"flex": "1"}),
+        card([kpi("RON95 (BUDI)", ron95_val, f"Subsidized · {fuel_date_str}", COLORS["green"]),
+              html.Div("Source: DOSM/KPDNHEP", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("RON95 (Market)", ron95_market_val, f"Market · {fuel_date_str}", COLORS["orange"]),
+              html.Div("Source: DOSM/KPDNHEP", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("Diesel (Targeted)", diesel_val, f"Subsidized · {fuel_date_str}", COLORS["green"]),
+              html.Div("Source: DOSM/KPDNHEP", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("Diesel (Market)", diesel_market_val, f"Unsubsidized · {fuel_date_str}", COLORS["orange"]),
+              html.Div("Source: DOSM/KPDNHEP", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
     ], style={"display": "flex", "gap": "12px", "marginBottom": "8px",
               "maxWidth": "100%", "flexWrap": "wrap"}),
 
@@ -703,18 +727,46 @@ app.layout = html.Div(style={
     html.Div([
         card([
             html.H3("PPI Headline  (% YoY, Monthly)",
-                    style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
+                    style={"margin": "0 0 8px", "fontSize": "13px", "color": COLORS["subtext"],
                            "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Dropdown(
+                id="ppi-headline-range",
+                options=[
+                    {"label": "Since 2022", "value": "2022"},
+                    {"label": "Since 2021", "value": "2021"},
+                    {"label": "Since 2020", "value": "2020"},
+                    {"label": "All (since 2010)", "value": "2010"},
+                ],
+                value="2022",
+                clearable=False,
+                style={"background": COLORS["card"], "color": "#000",
+                       "marginBottom": "8px", "maxWidth": "180px"},
+            ),
             dcc.Graph(id="ppi-headline-chart", style={"height": "300px"},
                       config={"displayModeBar": False}),
+            html.Div("Source: DOSM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"}),
         ], {"flex": "1"}),
 
         card([
             html.H3("PPI by Sector  (% YoY, Monthly)",
-                    style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
+                    style={"margin": "0 0 8px", "fontSize": "13px", "color": COLORS["subtext"],
                            "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Dropdown(
+                id="ppi-sections-range",
+                options=[
+                    {"label": "Since 2022", "value": "2022"},
+                    {"label": "Since 2021", "value": "2021"},
+                    {"label": "Since 2020", "value": "2020"},
+                    {"label": "All (since 2010)", "value": "2010"},
+                ],
+                value="2022",
+                clearable=False,
+                style={"background": COLORS["card"], "color": "#000",
+                       "marginBottom": "8px", "maxWidth": "180px"},
+            ),
             dcc.Graph(id="ppi-sections-chart", style={"height": "300px"},
                       config={"displayModeBar": False}),
+            html.Div("Source: DOSM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"}),
         ], {"flex": "1"}),
     ], style={"display": "flex", "gap": "16px", "marginBottom": "20px", "flexWrap": "wrap"}),
 
@@ -1678,8 +1730,9 @@ for chart_id, (code, color, label) in GDP_SECTORS.items():
         return make_sector_chart(_code, _color, _label)
 
 
-@app.callback(Output("ppi-headline-chart", "figure"), Input("refresh-interval", "n_intervals"))
-def ppi_headline_chart(_):
+@app.callback(Output("ppi-headline-chart", "figure"),
+              [Input("ppi-headline-range", "value"), Input("refresh-interval", "n_intervals")])
+def ppi_headline_chart(year_start, _):
     fig = go.Figure()
     if ppi_ts.empty:
         fig.add_annotation(text="PPI data not available",
@@ -1688,9 +1741,9 @@ def ppi_headline_chart(_):
         fig.update_layout(**LAYOUT)
         return fig
 
-    d = ppi_ts[ppi_ts["date"] >= datetime(2021, 1, 1)]
+    cutoff = datetime(int(year_start), 1, 1)
+    d = ppi_ts[ppi_ts["date"] >= cutoff]
 
-    # Area fill — positive green, negative red
     fig.add_trace(go.Scatter(
         x=d["date"], y=d["value"],
         mode="lines",
@@ -1703,22 +1756,18 @@ def ppi_headline_chart(_):
 
     fig.add_hline(y=0, line_color=COLORS["subtext"], line_width=1)
 
-    # Latest value annotation
     if not d.empty:
         last = d.iloc[-1]
-        fig.add_annotation(
-            text=f"Latest: {last['value']:+.1f}%  ({last['date'].strftime('%b %Y')})",
-            xref="paper", yref="paper", x=0.98, y=0.98,
-            showarrow=False, font=dict(color=COLORS["orange"], size=11),
-            align="right", bgcolor="rgba(0,0,0,0.5)", borderpad=6,
-        )
+        mark_latest(fig, last["date"], last["value"],
+                   f"{last['value']:+.1f}%", COLORS["orange"])
 
     fig.update_layout(**LAYOUT, yaxis_title="% YoY")
     return fig
 
 
-@app.callback(Output("ppi-sections-chart", "figure"), Input("refresh-interval", "n_intervals"))
-def ppi_sections_chart(_):
+@app.callback(Output("ppi-sections-chart", "figure"),
+              [Input("ppi-sections-range", "value"), Input("refresh-interval", "n_intervals")])
+def ppi_sections_chart(year_start, _):
     fig = go.Figure()
     if ppi_sections.empty:
         fig.add_annotation(text="PPI sectoral data not available",
@@ -1727,6 +1776,7 @@ def ppi_sections_chart(_):
         fig.update_layout(**LAYOUT)
         return fig
 
+    cutoff = datetime(int(year_start), 1, 1)
     section_colors = {
         "A": COLORS["green"],       # Agriculture
         "B": COLORS["gold"],        # Mining — oil/gas upstream
@@ -1737,7 +1787,7 @@ def ppi_sections_chart(_):
 
     for sec, color in section_colors.items():
         sub = ppi_sections[(ppi_sections["section"] == sec) &
-                          (ppi_sections["date"] >= datetime(2021, 1, 1))]
+                          (ppi_sections["date"] >= cutoff)]
         if sub.empty:
             continue
         fig.add_trace(go.Scatter(
@@ -1750,9 +1800,6 @@ def ppi_sections_chart(_):
 
     fig.add_hline(y=0, line_color=COLORS["subtext"], line_width=1)
     fig.update_layout(**LAYOUT, yaxis_title="% YoY")
-    fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02,
-                                  xanchor="left", x=0,
-                                  bgcolor="rgba(0,0,0,0)", borderwidth=0))
     return fig
 
 
