@@ -16,10 +16,8 @@ from datetime import datetime, timedelta
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
-DOSM_BASE = "https://api.data.gov.my/data-catalogue"
-BNM_BASE = "https://api.bnm.gov.my/public"
-BNM_HEADERS = {"Accept": "application/vnd.BNM.API.v1+json"}
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://irzjxcwgihjdootxjyuu.supabase.co")
+SUPABASE_KEY = os.environ.get("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlyemp4Y3dnaWhqZG9vdHhqeXV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDgwNDAsImV4cCI6MjA4OTE4NDA0MH0.GspfvUpfb5RLLdUWxbsf-JOGCk_oVveLF_HM3M6of6U")
 
 COLORS = {
     "primary":   "#1a5276",
@@ -40,73 +38,64 @@ COLORS = {
 FONT = "Inter, Segoe UI, sans-serif"
 
 
-# ── Data loading ──────────────────────────────────────────────────────────────
+# ── Data loading (from Supabase) ─────────────────────────────────────────────
 
-def load_csv(category, name):
-    path = os.path.join(DATA_DIR, category, name)
-    if os.path.exists(path):
-        df = pd.read_csv(path)
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
-            df = df.sort_values("date").reset_index(drop=True)
-        return df
-    return pd.DataFrame()
-
-
-def fetch_dosm(dataset_id, limit=10000):
+def load_supabase(table, order_col="date", limit=10000):
+    """Fetch a table from Supabase REST API and return a DataFrame."""
     try:
-        r = requests.get(f"{DOSM_BASE}?id={dataset_id}&limit={limit}", timeout=30)
-        df = pd.DataFrame(r.json())
+        headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
+        url = f"{SUPABASE_URL}/rest/v1/{table}?order={order_col}.asc&limit={limit}"
+        r = requests.get(url, headers=headers, timeout=30)
+        if r.status_code != 200:
+            print(f"  Warning: {table} returned {r.status_code}")
+            return pd.DataFrame()
+        data = r.json()
+        if not data:
+            return pd.DataFrame()
+        df = pd.DataFrame(data)
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
             df = df.sort_values("date").reset_index(drop=True)
+        # Drop the auto-generated id column
+        if "id" in df.columns:
+            df = df.drop(columns=["id"])
         return df
     except Exception as e:
-        print(f"  Warning: Could not fetch {dataset_id}: {e}")
+        print(f"  Warning: Could not fetch {table}: {e}")
         return pd.DataFrame()
 
 
-def fetch_bnm(endpoint):
-    try:
-        r = requests.get(f"{BNM_BASE}/{endpoint}", headers=BNM_HEADERS, timeout=30)
-        return r.json()
-    except Exception as e:
-        print(f"  Warning: Could not fetch BNM {endpoint}: {e}")
-        return {}
+print("Loading data from Supabase...")
 
+# 1. Exchange rates (monthly since 1997)
+fx = load_supabase("exchange_rates")
 
-print("Loading data...")
-
-# 1. Exchange rates (local CSV — monthly since 1997)
-fx = load_csv("exchange_rates", "exchange_rates.csv")
-fx_today = load_csv("exchange_rates", "exchange_rates_today.csv")
-
-# 1b. Daily USD/MYR for 2026 (from BNM API)
-usd_myr_daily = load_csv("exchange_rates", "usd_myr_daily_2026.csv")
+# 1b. Daily USD/MYR for 2026
+usd_myr_daily = load_supabase("usd_myr_daily")
 if not usd_myr_daily.empty:
     usd_myr_daily["mid"] = (usd_myr_daily["buying"] + usd_myr_daily["selling"]) / 2
 
-# 2. CPI inflation (local CSV — monthly since 2000)
-cpi_headline = load_csv("inflation", "cpi_headline.csv")
-cpi_core = load_csv("inflation", "cpi_core.csv")
+# 2. CPI inflation (monthly since 2000)
+cpi_headline = load_supabase("cpi_headline")
+cpi_core = load_supabase("cpi_core")
 
-# 3. Trade by commodity (local CSV — monthly since 2000)
-trade = load_csv("trade", "trade_by_commodity.csv")
+# 3. Trade by commodity (monthly since 2000)
+trade = load_supabase("trade_by_commodity")
 
-# 4. GDP by sector and expenditure
-gdp_sector = load_csv("gdp", "gdp_by_sector.csv")
-gdp_expenditure = load_csv("gdp", "gdp_by_expenditure.csv")
-gdp_quarterly = load_csv("gdp", "gdp_quarterly.csv")
+# 4. GDP
+gdp_sector = load_supabase("gdp_by_sector")
+gdp_expenditure = load_supabase("gdp_by_expenditure")
+gdp_quarterly = load_supabase("gdp_quarterly")
 
 # 5. Interest rates
-opr = load_csv("interest_rates", "opr_historical.csv")
+opr = load_supabase("opr_historical")
 
-# 6. PPI (local CSV — pre-fetched from DOSM)
-ppi = load_csv("inflation", "ppi.csv")
-ppi_1d = load_csv("inflation", "ppi_1d.csv")
+# 6. PPI
+ppi = load_supabase("ppi")
+ppi_1d = load_supabase("ppi_1d")
 
-# 8. Fuel prices (local CSV — pre-fetched from DOSM)
-fuel_prices = load_csv("inflation", "fuelprice.csv")
+# 7. Fuel prices
+fuel_prices = load_supabase("fuelprice")
 
 print("Data ready.\n")
 

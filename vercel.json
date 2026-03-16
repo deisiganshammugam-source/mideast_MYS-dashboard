@@ -4,12 +4,22 @@
     {
       "src": "api/index.py",
       "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
+      "config": { "maxLambdaSize": "50mb" }
+    },
+    {
+      "src": "api/refresh.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "50mb" }
     }
   ],
   "rewrites": [
+    { "source": "/api/refresh", "destination": "/api/refresh" },
     { "source": "/(.*)", "destination": "/api/index" }
+  ],
+  "crons": [
+    {
+      "path": "/api/refresh",
+      "schedule": "0 0 * * *"
+    }
   ]
 }
