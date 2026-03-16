@@ -397,6 +397,26 @@ def section_header(title, subtitle=""):
                                       "paddingBottom": "8px"})
 
 
+def mark_latest(fig, x, y, label="", color=COLORS["text"], fmt="{:.2f}"):
+    """Add a prominent marker and label on the latest data point."""
+    if x is None or y is None or pd.isna(y):
+        return
+    val_str = fmt.format(y) if not label else label
+    fig.add_trace(go.Scatter(
+        x=[x], y=[y], mode="markers",
+        marker=dict(size=12, color=color, symbol="circle",
+                    line=dict(width=2, color="white")),
+        showlegend=False, hoverinfo="skip",
+    ))
+    fig.add_annotation(
+        x=x, y=y, text=f"<b>{val_str}</b>",
+        showarrow=True, arrowhead=0, arrowcolor=color,
+        ax=40, ay=-20,
+        font=dict(color=color, size=11),
+        bgcolor="rgba(0,0,0,0.6)", borderpad=3,
+    )
+
+
 LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
@@ -1140,6 +1160,18 @@ def cpi_components(_):
         fig.add_vline(x=pd.to_datetime(date_str), line_dash="dot",
                      line_color=COLORS["accent"], line_width=1)
 
+    # Mark latest point for headline
+    for df, col, color, name in [
+        (cpi_overall, "headline_yoy", COLORS["secondary"], "Headline"),
+        (cpi_transport, "transport_yoy", COLORS["orange"], "Transport"),
+        (cpi_food, "food_yoy", COLORS["gold"], "Food"),
+    ]:
+        if not df.empty:
+            d = df[df["date"] >= cutoff].dropna(subset=[col])
+            if not d.empty:
+                last = d.iloc[-1]
+                mark_latest(fig, last["date"], last[col], f"{last[col]:.1f}%", color)
+
     fig.add_hline(y=0, line_dash="dash", line_color=COLORS["subtext"], line_width=1)
     fig.update_layout(**LAYOUT, yaxis_title="% YoY")
     return fig
@@ -1157,6 +1189,10 @@ def headline_core(_):
             mode="lines", name="Headline",
             line=dict(color=COLORS["secondary"], width=2),
         ))
+        if not d.empty:
+            last = d.dropna(subset=["headline_yoy"]).iloc[-1]
+            mark_latest(fig, last["date"], last["headline_yoy"],
+                       f"{last['headline_yoy']:.1f}%", COLORS["secondary"])
 
     if not cpi_core_ts.empty:
         d = cpi_core_ts[cpi_core_ts["date"] >= cutoff]
@@ -1165,6 +1201,10 @@ def headline_core(_):
             mode="lines", name="Core",
             line=dict(color=COLORS["green"], width=2, dash="dash"),
         ))
+        if not d.empty:
+            last = d.dropna(subset=["core_yoy"]).iloc[-1]
+            mark_latest(fig, last["date"], last["core_yoy"],
+                       f"{last['core_yoy']:.1f}%", COLORS["green"])
 
     fig.add_hline(y=0, line_dash="dash", line_color=COLORS["subtext"], line_width=1)
     fig.update_layout(**LAYOUT, yaxis_title="% YoY")
@@ -1300,6 +1340,8 @@ def cpi_heatmap(_):
         d["division_label"] = d["division"].map(
             lambda x: CPI_DIVISION_LABELS.get(x, x))
         pivot = d.pivot_table(index="division_label", columns="month", values="inflation_yoy")
+        # Drop columns (months) where more than half the divisions have no data
+        pivot = pivot.dropna(axis=1, thresh=len(pivot) // 2)
         pivot = pivot.sort_index()
 
         fig = go.Figure(go.Heatmap(
@@ -1514,6 +1556,11 @@ def gdp_growth_chart(_):
         hovertemplate="<b>%{x|%Y Q}</b><br>GDP: %{y:.1f}% YoY<extra></extra>",
     ))
     fig.add_hline(y=0, line_color=COLORS["subtext"], line_width=1)
+    # Mark latest GDP bar
+    if not d.empty:
+        last = d.iloc[-1]
+        mark_latest(fig, last["date"], last["gdp_yoy"],
+                   f"{last['gdp_yoy']:.1f}%", COLORS["text"])
     fig.update_layout(**LAYOUT, yaxis_title="% YoY")
     return fig
 
