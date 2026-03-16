@@ -357,10 +357,10 @@ def card(children, style=None):
     base = {
         "background": COLORS["card"],
         "borderRadius": "12px",
-        "padding": "20px 24px",
+        "padding": "16px 16px",
         "border": f"1px solid {COLORS['border']}",
         "boxShadow": "0 4px 20px rgba(0,0,0,0.3)",
-        "minWidth": "260px",
+        "minWidth": "140px",
         "overflow": "hidden",
         "boxSizing": "border-box",
     }
@@ -451,32 +451,47 @@ app.index_string = '''<!DOCTYPE html>
 
             /* Mobile-responsive overrides */
             @media screen and (max-width: 768px) {
-                /* Reduce page padding on small screens */
-                #react-entry-point > div { padding: 12px 10px !important; }
+                /* Reduce page padding */
+                #react-entry-point > div > div { padding: 8px 6px !important; }
 
-                /* Make header text smaller */
-                h1 { font-size: 18px !important; }
-                h2 { font-size: 15px !important; }
-                h3 { font-size: 12px !important; }
+                /* Header */
+                h1 { font-size: 16px !important; }
+                h2 { font-size: 13px !important; }
+                h3 { font-size: 11px !important; }
 
-                /* Cards: reduce padding, let them fill width */
-                #react-entry-point > div > div > div {
-                    min-width: 0 !important;
+                /* Force all flex containers to wrap and stack */
+                div[style*="display: flex"] {
+                    gap: 8px !important;
                 }
 
-                /* Reduce chart heights on mobile */
-                .js-plotly-plot, .dash-graph {
+                /* KPI cards: 2 per row on mobile */
+                div[style*="display: flex"] > div {
                     min-width: 0 !important;
+                    flex: 1 1 calc(50% - 8px) !important;
+                    max-width: calc(50% - 4px) !important;
+                    padding: 12px 10px !important;
                 }
-                .dash-graph > div { height: auto !important; min-height: 220px; }
 
-                /* KPI value text smaller on mobile */
-                .kpi-value { font-size: 20px !important; }
+                /* Chart cards: full width on mobile */
+                div[style*="display: flex"] > div:has(.dash-graph) {
+                    flex: 1 1 100% !important;
+                    max-width: 100% !important;
+                }
+
+                /* Reduce chart heights */
+                .js-plotly-plot, .dash-graph { min-width: 0 !important; }
+                .dash-graph > div { height: auto !important; min-height: 200px; }
+
+                /* KPI text sizing */
+                .kpi-value { font-size: 18px !important; }
+
+                /* Descriptions: smaller on mobile */
+                div[style*="fontSize: 11px"] { font-size: 10px !important; }
             }
 
             /* Tablet adjustments */
             @media screen and (max-width: 1024px) {
-                #react-entry-point > div { padding: 16px 16px !important; }
+                #react-entry-point > div > div { padding: 12px 12px !important; }
             }
         </style>
     </head>
