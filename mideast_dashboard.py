@@ -617,7 +617,7 @@ app.layout = html.Div(style={
             html.H3("Overall Trade Balance  (RM)",
                     style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
                            "fontWeight": "600", "textTransform": "uppercase"}),
-            dcc.Graph(id="trade-overall-chart", style={"height": "300px"},
+            dcc.Graph(id="trade-overall-chart", style={"height": "400px"},
                       config={"displayModeBar": False}),
         ], {"flex": "1"}),
 
@@ -625,7 +625,7 @@ app.layout = html.Div(style={
             html.H3("Mineral Fuels Trade  (SITC 3, RM)",
                     style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
                            "fontWeight": "600", "textTransform": "uppercase"}),
-            dcc.Graph(id="trade-petroleum-chart", style={"height": "300px"},
+            dcc.Graph(id="trade-petroleum-chart", style={"height": "400px"},
                       config={"displayModeBar": False}),
         ], {"flex": "1"}),
     ], style={"display": "flex", "gap": "16px", "marginBottom": "20px", "flexWrap": "wrap"}),
@@ -633,8 +633,16 @@ app.layout = html.Div(style={
     # Trade composition — key conflict-sensitive categories
     card([
         html.H3("Conflict-Sensitive Exports — Mineral Fuels, Food, Chemicals & Palm Oil  (RM billion)",
-                style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
+                style={"margin": "0 0 4px", "fontSize": "13px", "color": COLORS["subtext"],
                        "fontWeight": "600", "textTransform": "uppercase"}),
+        html.Div(
+            "These four SITC categories are most exposed to Middle East disruption. "
+            "Mineral fuels (SITC 3) dominate Malaysia's conflict-sensitive exports at RM 14–18bn/month. "
+            "Palm oil and chemicals face indirect risk via shipping disruption through the Strait of Malacca. "
+            "Food imports could rise in cost if global supply chains are strained.",
+            style={"color": COLORS["subtext"], "fontSize": "11px", "lineHeight": "1.5",
+                   "marginBottom": "12px"}
+        ),
         dcc.Graph(id="trade-composition-chart", style={"height": "360px"},
                   config={"displayModeBar": False}),
     ], {"marginBottom": "20px"}),
@@ -1184,45 +1192,31 @@ def trade_overall_chart(_):
         fig.update_layout(**LAYOUT)
         return fig
 
-    d = trade_overall[trade_overall["date"] >= datetime.now() - timedelta(days=730)].copy()
-    recent_cutoff = d["date"].max() - timedelta(days=180)
+    d = trade_overall[trade_overall["date"] >= datetime.now() - timedelta(days=365)].copy()
 
-    # Older months — muted
-    older = d[d["date"] < recent_cutoff]
-    if not older.empty:
-        fig.add_trace(go.Bar(x=older["date"], y=older["exports"] / 1e9,
-                            name="Exports", marker_color=COLORS["green"], opacity=0.3,
-                            showlegend=False))
-        fig.add_trace(go.Bar(x=older["date"], y=older["imports"] / 1e9,
-                            name="Imports", marker_color=COLORS["accent"], opacity=0.3,
-                            showlegend=False))
+    fig.add_trace(go.Bar(x=d["date"], y=d["exports"] / 1e9,
+                        name="Exports", marker_color=COLORS["green"]))
+    fig.add_trace(go.Bar(x=d["date"], y=d["imports"] / 1e9,
+                        name="Imports", marker_color=COLORS["accent"]))
 
-    # Recent 6 months — bold
-    recent = d[d["date"] >= recent_cutoff]
-    if not recent.empty:
-        fig.add_trace(go.Bar(x=recent["date"], y=recent["exports"] / 1e9,
-                            name="Exports", marker_color=COLORS["green"], opacity=0.9))
-        fig.add_trace(go.Bar(x=recent["date"], y=recent["imports"] / 1e9,
-                            name="Imports", marker_color=COLORS["accent"], opacity=0.9))
-
-    # Balance line + 3-month MA
+    # Trade balance line
     fig.add_trace(go.Scatter(
-        x=d["date"], y=d["balance"] / 1e9, name="Balance",
-        mode="lines", line=dict(color=COLORS["gold"], width=1, dash="dot"), opacity=0.5,
-    ))
-    d["balance_ma"] = d["balance"].rolling(3, min_periods=1).mean()
-    fig.add_trace(go.Scatter(
-        x=d["date"], y=d["balance_ma"] / 1e9, name="Balance (3m MA)",
-        mode="lines", line=dict(color=COLORS["gold"], width=3),
+        x=d["date"], y=d["balance"] / 1e9, name="Trade Balance",
+        mode="lines+markers", line=dict(color=COLORS["gold"], width=2.5),
+        marker=dict(size=5),
+        hovertemplate="<b>%{x|%b %Y}</b><br>Balance: RM%{y:.1f}bn<extra></extra>",
     ))
 
-    events = [("2023-10-07", "Hamas"), ("2024-04-13", "Iran"), ("2026-02-25", "Iran bombing")]
-    for date_str, label in events:
-        evt = pd.to_datetime(date_str)
-        if not d.empty and evt >= d["date"].min() and evt <= d["date"].max():
-            fig.add_vline(x=evt, line_dash="dot", line_color=COLORS["accent"], line_width=1)
-            fig.add_annotation(x=evt, y=d["exports"].max() / 1e9, text=label,
-                             showarrow=False, font=dict(color=COLORS["accent"], size=9), yshift=10)
+    # Latest values annotation
+    if not d.empty:
+        last = d.iloc[-1]
+        fig.add_annotation(
+            text=f"Exports: RM {last['exports']/1e9:.0f}bn | Imports: RM {last['imports']/1e9:.0f}bn<br>"
+                 f"Balance: RM {last['balance']/1e9:+.1f}bn  ({last['date'].strftime('%b %Y')})",
+            xref="paper", yref="paper", x=0.02, y=0.98,
+            showarrow=False, font=dict(color=COLORS["text"], size=11),
+            align="left", bgcolor="rgba(0,0,0,0.5)", borderpad=6,
+        )
 
     fig.update_layout(**LAYOUT, barmode="group", yaxis_title="RM billion")
     return fig
@@ -1237,36 +1231,19 @@ def trade_petroleum_chart(_):
         fig.update_layout(**LAYOUT)
         return fig
 
-    d = trade_petroleum[trade_petroleum["date"] >= datetime.now() - timedelta(days=730)].copy()
-    recent_cutoff = d["date"].max() - timedelta(days=180)
+    d = trade_petroleum[trade_petroleum["date"] >= datetime.now() - timedelta(days=365)].copy()
 
-    # Older months — muted
-    older = d[d["date"] < recent_cutoff]
-    if not older.empty:
-        fig.add_trace(go.Bar(x=older["date"], y=older["exports"] / 1e9,
-                            name="Fuel Exports", marker_color=COLORS["green"], opacity=0.3,
-                            showlegend=False))
-        fig.add_trace(go.Bar(x=older["date"], y=older["imports"] / 1e9,
-                            name="Fuel Imports", marker_color=COLORS["accent"], opacity=0.3,
-                            showlegend=False))
+    fig.add_trace(go.Bar(x=d["date"], y=d["exports"] / 1e9,
+                        name="Fuel Exports", marker_color=COLORS["green"]))
+    fig.add_trace(go.Bar(x=d["date"], y=d["imports"] / 1e9,
+                        name="Fuel Imports", marker_color=COLORS["accent"]))
 
-    # Recent 6 months — bold
-    recent = d[d["date"] >= recent_cutoff]
-    if not recent.empty:
-        fig.add_trace(go.Bar(x=recent["date"], y=recent["exports"] / 1e9,
-                            name="Fuel Exports", marker_color=COLORS["green"], opacity=0.9))
-        fig.add_trace(go.Bar(x=recent["date"], y=recent["imports"] / 1e9,
-                            name="Fuel Imports", marker_color=COLORS["accent"], opacity=0.9))
-
-    # Net balance line + 3m MA
+    # Net balance line
     fig.add_trace(go.Scatter(
         x=d["date"], y=d["balance"] / 1e9, name="Net Balance",
-        mode="lines", line=dict(color=COLORS["gold"], width=1, dash="dot"), opacity=0.5,
-    ))
-    d["balance_ma"] = d["balance"].rolling(3, min_periods=1).mean()
-    fig.add_trace(go.Scatter(
-        x=d["date"], y=d["balance_ma"] / 1e9, name="Net Balance (3m MA)",
-        mode="lines", line=dict(color=COLORS["gold"], width=3),
+        mode="lines+markers", line=dict(color=COLORS["gold"], width=2.5),
+        marker=dict(size=5),
+        hovertemplate="<b>%{x|%b %Y}</b><br>Net: RM%{y:+.1f}bn<extra></extra>",
     ))
 
     # Latest net position annotation
@@ -1274,10 +1251,10 @@ def trade_petroleum_chart(_):
         last = d.iloc[-1]
         net = last["balance"] / 1e9
         fig.add_annotation(
-            text=f"Latest: RM {net:+.1f}bn",
-            xref="paper", yref="paper", x=0.98, y=0.98,
-            showarrow=False, font=dict(color=COLORS["gold"], size=12, weight="bold"),
-            align="right", bgcolor="rgba(0,0,0,0.5)", borderpad=6,
+            text=f"Net fuel position: RM {net:+.1f}bn  ({last['date'].strftime('%b %Y')})",
+            xref="paper", yref="paper", x=0.02, y=0.98,
+            showarrow=False, font=dict(color=COLORS["gold"], size=11),
+            align="left", bgcolor="rgba(0,0,0,0.5)", borderpad=6,
         )
 
     fig.update_layout(**LAYOUT, barmode="group", yaxis_title="RM billion")
@@ -1327,10 +1304,13 @@ def trade_composition(_):
             hovertemplate=f"<b>{label}</b><br>%{{x|%b %Y}}: RM%{{y:.1f}}bn<extra></extra>",
         ))
 
-    # Event marker
+    # Iran bombing event marker with label
     iran_date = pd.to_datetime("2026-02-25")
     if not d.empty and iran_date >= d["date"].min():
         fig.add_vline(x=iran_date, line_dash="dot", line_color=COLORS["accent"], line_width=1)
+        fig.add_annotation(x=iran_date, y=d["exports"].max() / 1e9 * 0.95,
+                          text="Iran bombing\n25 Feb 2026", showarrow=False,
+                          font=dict(color=COLORS["accent"], size=9))
 
     fig.update_layout(**LAYOUT, yaxis_title="RM billion")
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02,
