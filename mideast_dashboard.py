@@ -420,12 +420,14 @@ def mark_latest(fig, x, y, label="", color=COLORS["text"], fmt="{:.2f}"):
 LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(family=FONT, color=COLORS["text"]),
-    margin=dict(t=40, b=40, l=50, r=20),
+    font=dict(family=FONT, color=COLORS["text"], size=11),
+    margin=dict(t=30, b=35, l=45, r=15),
     legend=dict(bgcolor="rgba(0,0,0,0)", bordercolor=COLORS["border"],
-                borderwidth=1, font=dict(size=11)),
+                borderwidth=0, font=dict(size=10),
+                orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
     xaxis=dict(gridcolor=COLORS["border"], showgrid=True, zeroline=False),
     yaxis=dict(gridcolor=COLORS["border"], showgrid=True, zeroline=False),
+    autosize=True,
 )
 
 
@@ -446,52 +448,51 @@ app.index_string = '''<!DOCTYPE html>
         {%favicon%}
         {%css%}
         <style>
-            /* Prevent horizontal overflow */
-            html, body { overflow-x: hidden; max-width: 100vw; }
+            html, body { overflow-x: hidden; max-width: 100vw; margin: 0; }
 
-            /* Mobile-responsive overrides */
             @media screen and (max-width: 768px) {
-                /* Reduce page padding */
-                #react-entry-point > div > div { padding: 8px 6px !important; }
+                /* Page padding */
+                #react-entry-point > div > div {
+                    padding: 10px 8px !important;
+                    max-width: 100vw !important;
+                }
 
-                /* Header */
+                /* Typography */
                 h1 { font-size: 16px !important; }
                 h2 { font-size: 13px !important; }
-                h3 { font-size: 11px !important; }
+                h3 { font-size: 10px !important; }
+                .kpi-value { font-size: 18px !important; }
 
-                /* Force all flex containers to wrap and stack */
+                /* All flex rows: stack vertically */
                 div[style*="display: flex"] {
+                    flex-direction: column !important;
                     gap: 8px !important;
                 }
 
-                /* KPI cards: 2 per row on mobile */
+                /* All direct children of flex rows: full width */
                 div[style*="display: flex"] > div {
                     min-width: 0 !important;
-                    flex: 1 1 calc(50% - 8px) !important;
-                    max-width: calc(50% - 4px) !important;
+                    max-width: 100% !important;
+                    flex: none !important;
+                    width: 100% !important;
                     padding: 12px 10px !important;
                 }
 
-                /* Chart cards: full width on mobile */
-                div[style*="display: flex"] > div:has(.dash-graph) {
-                    flex: 1 1 100% !important;
-                    max-width: 100% !important;
+                /* Charts: force reasonable height */
+                .js-plotly-plot, .dash-graph {
+                    min-width: 0 !important;
+                    width: 100% !important;
+                }
+                .dash-graph > div > div {
+                    width: 100% !important;
                 }
 
-                /* Reduce chart heights */
-                .js-plotly-plot, .dash-graph { min-width: 0 !important; }
-                .dash-graph > div { height: auto !important; min-height: 200px; }
-
-                /* KPI text sizing */
-                .kpi-value { font-size: 18px !important; }
-
-                /* Descriptions: smaller on mobile */
-                div[style*="fontSize: 11px"] { font-size: 10px !important; }
+                /* Plotly modebar hide on mobile */
+                .modebar-container { display: none !important; }
             }
 
-            /* Tablet adjustments */
             @media screen and (max-width: 1024px) {
-                #react-entry-point > div > div { padding: 12px 12px !important; }
+                #react-entry-point > div > div { padding: 14px 14px !important; }
             }
         </style>
     </head>
@@ -1417,7 +1418,7 @@ def cpi_heatmap(_):
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
         font=dict(family=FONT, color=COLORS["text"]),
-        margin=dict(t=10, b=40, l=200, r=10),
+        margin=dict(t=10, b=40, l=160, r=10),
         xaxis=dict(side="bottom", tickangle=-45),
         yaxis=dict(autorange="reversed"),
     )
