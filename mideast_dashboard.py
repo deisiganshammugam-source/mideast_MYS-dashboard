@@ -976,7 +976,7 @@ app.layout = html.Div(style={
                     "textAlign": "center", "marginTop": "16px",
                 }),
                 html.Div(
-                    "Petronas revenues rise while RON95 subsidy cost remains manageable. "
+                    "Petroleum-related fiscal revenue rises while RON95 subsidy cost remains manageable. "
                     "Above ~USD 90/bbl, subsidy rationalisation pressure intensifies.",
                     style={"color": COLORS["subtext"], "fontSize": "12px",
                            "textAlign": "center", "marginTop": "4px"}
