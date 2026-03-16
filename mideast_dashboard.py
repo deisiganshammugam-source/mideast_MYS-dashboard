@@ -41,22 +41,32 @@ FONT = "Inter, Segoe UI, sans-serif"
 # ── Data loading (from Supabase) ─────────────────────────────────────────────
 
 def load_supabase(table, order_col="date", limit=10000):
-    """Fetch a table from Supabase REST API and return a DataFrame."""
+    """Fetch a table from Supabase REST API with pagination (default max 1000 rows per request)."""
     try:
         headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
-        url = f"{SUPABASE_URL}/rest/v1/{table}?order={order_col}.asc&limit={limit}"
-        r = requests.get(url, headers=headers, timeout=30)
-        if r.status_code != 200:
-            print(f"  Warning: {table} returned {r.status_code}")
+        all_data = []
+        page_size = 1000
+        offset = 0
+        while offset < limit:
+            url = (f"{SUPABASE_URL}/rest/v1/{table}"
+                   f"?order={order_col}.asc&limit={page_size}&offset={offset}")
+            r = requests.get(url, headers=headers, timeout=30)
+            if r.status_code != 200:
+                print(f"  Warning: {table} returned {r.status_code}")
+                break
+            data = r.json()
+            if not data:
+                break
+            all_data.extend(data)
+            if len(data) < page_size:
+                break  # last page
+            offset += page_size
+        if not all_data:
             return pd.DataFrame()
-        data = r.json()
-        if not data:
-            return pd.DataFrame()
-        df = pd.DataFrame(data)
+        df = pd.DataFrame(all_data)
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
             df = df.sort_values("date").reset_index(drop=True)
-        # Drop the auto-generated id column
         if "id" in df.columns:
             df = df.drop(columns=["id"])
         return df
