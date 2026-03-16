@@ -1058,74 +1058,76 @@ def fuel_price_chart(_):
         fig.update_layout(**LAYOUT)
         return fig
 
-    # Filter for price levels only (exclude weekly change rows)
+    # Filter for price levels only, from Jan 2024
     df = fuel_ts.copy()
     if "series_type" in df.columns:
         df = df[df["series_type"] == "level"]
+    df = df[df["date"] >= pd.to_datetime("2024-01-01")]
 
-    # Show from 2022 onwards (subsidized price era)
-    df = df[df["date"] >= pd.to_datetime("2022-01-01")]
+    # Color scheme: same fuel = same color, market = solid, subsidized = dashed
+    RON95_COLOR = COLORS["accent"]   # red family
+    RON97_COLOR = COLORS["gold"]     # yellow/gold
+    DIESEL_COLOR = COLORS["secondary"]  # blue family
 
-    # RON95 market/ceiling price
+    # RON95 market/ceiling price (solid)
     if "ron95" in df.columns:
         fig.add_trace(go.Scatter(
             x=df["date"], y=pd.to_numeric(df["ron95"], errors="coerce"),
             mode="lines", name="RON95 (Ceiling)",
-            line=dict(color=COLORS["accent"], width=2.5),
+            line=dict(color=RON95_COLOR, width=2.5),
             hovertemplate="<b>RON95 Ceiling</b><br>%{x|%d %b %Y}: RM%{y:.2f}<extra></extra>",
         ))
 
-    # RON95 BUDI subsidized price
+    # RON95 BUDI subsidized price (dashed, same color)
     if "ron95_budi95" in df.columns:
         budi = pd.to_numeric(df["ron95_budi95"], errors="coerce")
         fig.add_trace(go.Scatter(
             x=df["date"], y=budi,
             mode="lines", name="RON95 (BUDI Subsidy)",
-            line=dict(color=COLORS["green"], width=2.5, dash="dash"),
+            line=dict(color=RON95_COLOR, width=2.5, dash="dash"),
             hovertemplate="<b>RON95 BUDI</b><br>%{x|%d %b %Y}: RM%{y:.2f}<extra></extra>",
         ))
 
-    # RON97 (fully market-determined)
+    # RON97 (fully market-determined, solid)
     if "ron97" in df.columns:
         fig.add_trace(go.Scatter(
             x=df["date"], y=pd.to_numeric(df["ron97"], errors="coerce"),
             mode="lines", name="RON97 (Market)",
-            line=dict(color=COLORS["gold"], width=2),
+            line=dict(color=RON97_COLOR, width=2),
             hovertemplate="<b>RON97</b><br>%{x|%d %b %Y}: RM%{y:.2f}<extra></extra>",
         ))
 
-    # Diesel market/unsubsidized
+    # Diesel market/unsubsidized (solid)
     if "diesel" in df.columns:
         fig.add_trace(go.Scatter(
             x=df["date"], y=pd.to_numeric(df["diesel"], errors="coerce"),
             mode="lines", name="Diesel (Market)",
-            line=dict(color=COLORS["orange"], width=2),
+            line=dict(color=DIESEL_COLOR, width=2),
             hovertemplate="<b>Diesel Market</b><br>%{x|%d %b %Y}: RM%{y:.2f}<extra></extra>",
         ))
 
-    # Diesel subsidized (East Malaysia / targeted)
+    # Diesel subsidized (dashed, same color as diesel market)
     if "diesel_eastmsia" in df.columns:
         d_sub = pd.to_numeric(df["diesel_eastmsia"], errors="coerce")
         fig.add_trace(go.Scatter(
             x=df["date"], y=d_sub,
             mode="lines", name="Diesel (Targeted Subsidy)",
-            line=dict(color=COLORS["secondary"], width=2, dash="dash"),
+            line=dict(color=DIESEL_COLOR, width=2, dash="dash"),
             hovertemplate="<b>Diesel Targeted</b><br>%{x|%d %b %Y}: RM%{y:.2f}<extra></extra>",
         ))
 
     # Key event markers
     events = [
-        ("2023-10-07", "Hamas attack"),
         ("2024-06-10", "Diesel subsidy\nrationalisation"),
         ("2025-09-30", "RON95 subsidy\nrationalisation"),
     ]
     for date_str, label in events:
         evt = pd.to_datetime(date_str)
         if not df.empty and evt >= df["date"].min():
-            fig.add_vline(x=evt, line_dash="dot", line_color=COLORS["accent"], line_width=1)
+            fig.add_vline(x=evt, line_dash="dot", line_color=COLORS["subtext"], line_width=1)
             fig.add_annotation(x=evt, y=4.5,
                              text=label, showarrow=False,
-                             font=dict(color=COLORS["accent"], size=9), yshift=0)
+                             font=dict(color=COLORS["subtext"], size=9), yshift=0)
 
     fig.update_layout(**LAYOUT, yaxis_title="RM per litre")
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02,
