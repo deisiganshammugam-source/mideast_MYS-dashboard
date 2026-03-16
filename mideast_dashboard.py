@@ -40,30 +40,22 @@ FONT = "Inter, Segoe UI, sans-serif"
 
 # ── Data loading (from Supabase) ─────────────────────────────────────────────
 
-def load_supabase(table, order_col="date", limit=10000):
-    """Fetch a table from Supabase REST API with pagination (default max 1000 rows per request)."""
+def load_supabase(table, order_col="date", limit=1000, date_gte=None):
+    """Fetch a table from Supabase REST API. Use date_gte to filter server-side."""
     try:
         headers = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}"}
-        all_data = []
-        page_size = 1000
-        offset = 0
-        while offset < limit:
-            url = (f"{SUPABASE_URL}/rest/v1/{table}"
-                   f"?order={order_col}.asc&limit={page_size}&offset={offset}")
-            r = requests.get(url, headers=headers, timeout=30)
-            if r.status_code != 200:
-                print(f"  Warning: {table} returned {r.status_code}")
-                break
-            data = r.json()
-            if not data:
-                break
-            all_data.extend(data)
-            if len(data) < page_size:
-                break  # last page
-            offset += page_size
-        if not all_data:
+        url = (f"{SUPABASE_URL}/rest/v1/{table}"
+               f"?order={order_col}.asc&limit={limit}")
+        if date_gte:
+            url += f"&date=gte.{date_gte}"
+        r = requests.get(url, headers=headers, timeout=30)
+        if r.status_code != 200:
+            print(f"  Warning: {table} returned {r.status_code}")
             return pd.DataFrame()
-        df = pd.DataFrame(all_data)
+        data = r.json()
+        if not data:
+            return pd.DataFrame()
+        df = pd.DataFrame(data)
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
             df = df.sort_values("date").reset_index(drop=True)
@@ -77,35 +69,37 @@ def load_supabase(table, order_col="date", limit=10000):
 
 print("Loading data from Supabase...")
 
-# 1. Exchange rates (monthly since 1997)
-fx = load_supabase("exchange_rates")
+# Only fetch data needed for display — server-side date filtering keeps responses small & fast
+
+# 1. Exchange rates — last 10 years (charts show max "Since 2015")
+fx = load_supabase("exchange_rates", date_gte="2015-01-01")
 
 # 1b. Daily USD/MYR for 2026
 usd_myr_daily = load_supabase("usd_myr_daily")
 if not usd_myr_daily.empty:
     usd_myr_daily["mid"] = (usd_myr_daily["buying"] + usd_myr_daily["selling"]) / 2
 
-# 2. CPI inflation (monthly since 2000)
-cpi_headline = load_supabase("cpi_headline")
-cpi_core = load_supabase("cpi_core")
+# 2. CPI — last 5 years (heatmap shows 24 months, components show 5 years)
+cpi_headline = load_supabase("cpi_headline", date_gte="2020-01-01")
+cpi_core = load_supabase("cpi_core", date_gte="2020-01-01")
 
-# 3. Trade by commodity (monthly since 2000)
-trade = load_supabase("trade_by_commodity")
+# 3. Trade — last 5 years
+trade = load_supabase("trade_by_commodity", date_gte="2020-01-01")
 
-# 4. GDP
-gdp_sector = load_supabase("gdp_by_sector")
-gdp_expenditure = load_supabase("gdp_by_expenditure")
-gdp_quarterly = load_supabase("gdp_quarterly")
+# 4. GDP — since 2015
+gdp_sector = load_supabase("gdp_by_sector", date_gte="2015-01-01")
+gdp_expenditure = load_supabase("gdp_by_expenditure", date_gte="2015-01-01")
+gdp_quarterly = load_supabase("gdp_quarterly", date_gte="2015-01-01")
 
 # 5. Interest rates
 opr = load_supabase("opr_historical")
 
-# 6. PPI
-ppi = load_supabase("ppi")
-ppi_1d = load_supabase("ppi_1d")
+# 6. PPI — since 2020
+ppi = load_supabase("ppi", date_gte="2020-01-01")
+ppi_1d = load_supabase("ppi_1d", date_gte="2020-01-01")
 
-# 7. Fuel prices
-fuel_prices = load_supabase("fuelprice")
+# 7. Fuel prices — since 2022
+fuel_prices = load_supabase("fuelprice", date_gte="2022-01-01")
 
 print("Data ready.\n")
 
