@@ -1096,7 +1096,7 @@ def multi_fx_chart(selected, _):
 @app.callback(Output("cpi-components-chart", "figure"), Input("refresh-interval", "n_intervals"))
 def cpi_components(_):
     fig = go.Figure()
-    cutoff = datetime.now() - timedelta(days=1825)
+    cutoff = pd.to_datetime("2022-01-01")
 
     for df, col, color, name in [
         (cpi_overall, "headline_yoy", COLORS["secondary"], "Headline"),
@@ -1128,7 +1128,7 @@ def cpi_components(_):
 @app.callback(Output("headline-core-chart", "figure"), Input("refresh-interval", "n_intervals"))
 def headline_core(_):
     fig = go.Figure()
-    cutoff = datetime.now() - timedelta(days=1825)
+    cutoff = pd.to_datetime("2022-01-01")
 
     if not cpi_overall.empty:
         d = cpi_overall[cpi_overall["date"] >= cutoff]
