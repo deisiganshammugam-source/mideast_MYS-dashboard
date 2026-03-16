@@ -1,21 +1,13 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 60
-    },
-    "api/refresh.py": {
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
-    { "source": "/api/refresh", "destination": "/api/refresh" },
-    { "source": "/(.*)", "destination": "/api/index" }
-  ],
-  "crons": [
+  "builds": [
     {
-      "path": "/api/refresh",
-      "schedule": "0 0 * * *"
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "50mb" }
     }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/api/index.py" }
   ]
 }
