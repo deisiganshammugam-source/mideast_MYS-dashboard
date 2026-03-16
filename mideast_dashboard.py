@@ -610,7 +610,7 @@ app.layout = html.Div(style={
         ], {"flex": "1"}),
 
         card([
-            html.H3("USD/MYR — Since ME Conflict Escalation (25 Feb 2026)",
+            html.H3("USD/MYR — Since ME Conflict Escalation (28 Feb 2026)",
                     style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
                            "fontWeight": "600", "textTransform": "uppercase"}),
             dcc.Graph(id="usd-myr-iran", style={"height": "340px"},
@@ -1013,7 +1013,7 @@ def usd_myr_ytd(_):
         return fig
 
     df = usd_myr_daily.copy()
-    iran_date = pd.to_datetime("2026-02-25")
+    iran_date = pd.to_datetime("2026-02-28")
 
     # Midpoint line
     fig.add_trace(go.Scatter(
@@ -1068,7 +1068,7 @@ def usd_myr_ytd(_):
 @app.callback(Output("usd-myr-iran", "figure"), Input("refresh-interval", "n_intervals"))
 def usd_myr_iran(_):
     fig = go.Figure()
-    iran_date = pd.to_datetime("2026-02-25")
+    iran_date = pd.to_datetime("2026-02-28")
 
     if usd_myr_daily.empty:
         fig.add_annotation(text="No daily USD/MYR data — run BNM fetcher",
@@ -1138,7 +1138,7 @@ def usd_myr_iran(_):
         since_pct = (since_chg / event_rate) * 100
         chg_color = COLORS["down"] if since_pct > 0 else COLORS["up"]
         fig.add_annotation(
-            text=f"On 25 Feb: {event_rate:.4f}<br>"
+            text=f"On 28 Feb: {event_rate:.4f}<br>"
                  f"Latest: {latest_rate:.4f}<br>"
                  f"Change: {since_chg:+.4f} ({since_pct:+.1f}%)",
             xref="paper", yref="paper", x=0.98, y=0.98,
@@ -1652,11 +1652,11 @@ def trade_composition(_):
         ))
 
     # ME conflict escalation event marker with label
-    iran_date = pd.to_datetime("2026-02-25")
+    iran_date = pd.to_datetime("2026-02-28")
     if not d.empty and iran_date >= d["date"].min():
         fig.add_vline(x=iran_date, line_dash="dot", line_color=COLORS["accent"], line_width=1)
         fig.add_annotation(x=iran_date, y=d["exports"].max() / 1e9 * 0.95,
-                          text="ME conflict\nescalation\n25 Feb 2026", showarrow=False,
+                          text="ME conflict\nescalation\n28 Feb 2026", showarrow=False,
                           font=dict(color=COLORS["accent"], size=9))
 
     fig.update_layout(**LAYOUT, yaxis_title="RM billion")
