@@ -289,13 +289,28 @@ def latest_change(df, col):
 
 # ── Compute KPIs ──────────────────────────────────────────────────────────────
 
-# Use daily rate for KPI (more current than monthly average)
+# Use daily rate for KPI with YTD, since Feb 28, and d/d change
 if not usd_myr_daily.empty:
     last_daily = usd_myr_daily.iloc[-1]
     prev_daily = usd_myr_daily.iloc[-2] if len(usd_myr_daily) >= 2 else last_daily
+    ytd_start = usd_myr_daily.iloc[0]["mid"]
     usd_val = f"{last_daily['mid']:.4f}"
-    chg = last_daily["mid"] - prev_daily["mid"]
-    usd_chg = f"{chg:+.4f} d/d"
+    # Day-on-day
+    dd_chg = last_daily["mid"] - prev_daily["mid"]
+    # YTD
+    ytd_chg = last_daily["mid"] - ytd_start
+    ytd_pct = (ytd_chg / ytd_start) * 100
+    # Since Feb 28
+    feb28_df = usd_myr_daily[usd_myr_daily["date"] >= pd.to_datetime("2026-02-28")]
+    if not feb28_df.empty:
+        feb28_rate = feb28_df.iloc[0]["mid"]
+        feb_chg = last_daily["mid"] - feb28_rate
+        feb_pct = (feb_chg / feb28_rate) * 100
+        feb_str = f"Since 28 Feb: {feb_chg:+.4f} ({feb_pct:+.1f}%)"
+    else:
+        feb_str = ""
+    usd_chg = (f"d/d: {dd_chg:+.4f}  |  YTD: {ytd_pct:+.1f}%\n"
+               f"{feb_str}")
     usd_date = last_daily["date"].strftime("%d %b %Y")
 else:
     usd_val, usd_chg, usd_date = latest_change(usd_myr, "usd_myr")
@@ -538,7 +553,7 @@ app.layout = html.Div(style={
     # ── KPI Row 1 — Macro snapshot ──────────────────────────────────────────
     html.Div([
         card([kpi("USD/MYR", usd_val, f"{usd_chg}  ({usd_date})",
-                  COLORS["down"] if usd_chg.startswith("+") else COLORS["up"]),
+                  COLORS["up"] if not usd_myr_daily.empty and dd_chg < 0 else COLORS["down"]),
               html.Div("Source: BNM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
              {"flex": "1"}),
         card([kpi("Headline CPI (YoY)", headline_val, headline_date, COLORS["accent"]),
