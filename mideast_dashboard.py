@@ -1252,6 +1252,31 @@ def fuel_price_chart(_):
                              text=label, showarrow=False,
                              font=dict(color=COLORS["subtext"], size=9), yshift=0)
 
+    # Highlight diesel > RON97 crossover
+    if "diesel" in df.columns and "ron97" in df.columns:
+        d_diesel = pd.to_numeric(df["diesel"], errors="coerce")
+        d_ron97 = pd.to_numeric(df["ron97"], errors="coerce")
+        cross = df[(d_diesel > d_ron97) & d_diesel.notna() & d_ron97.notna()]
+        if not cross.empty:
+            first_cross = cross.iloc[0]
+            fig.add_annotation(
+                x=first_cross["date"],
+                y=float(d_diesel[cross.index[0]]),
+                text="Diesel surpasses RON97",
+                showarrow=True, arrowhead=2, arrowcolor=COLORS["gold"],
+                font=dict(color=COLORS["gold"], size=10),
+                ax=-60, ay=-30,
+                bgcolor="rgba(0,0,0,0.6)", borderpad=4,
+            )
+            # Shade the crossover region
+            fig.add_annotation(
+                text=f"Diesel-RON97 inversion: reflects global gasoil tightness<br>"
+                     f"from Middle East refinery disruptions and shipping rerouting",
+                xref="paper", yref="paper", x=0.02, y=0.02,
+                showarrow=False, font=dict(color=COLORS["gold"], size=9),
+                align="left", bgcolor="rgba(0,0,0,0.5)", borderpad=6,
+            )
+
     fig.update_layout(**LAYOUT, yaxis_title="RM per litre")
     fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02,
                                   xanchor="left", x=0,
