@@ -101,6 +101,29 @@ ppi_1d = load_supabase("ppi_1d", date_gte="2020-01-01")
 # 7. Fuel prices — since 2022
 fuel_prices = load_supabase("fuelprice", date_gte="2022-01-01")
 
+# 8. Energy benchmark prices (Brent crude + Henry Hub natural gas) from Yahoo Finance
+def fetch_yahoo_energy(ticker, period="ytd"):
+    """Fetch energy commodity prices from Yahoo Finance chart API."""
+    try:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?range={period}&interval=1d"
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=15)
+        if r.status_code != 200:
+            return pd.DataFrame()
+        data = r.json().get("chart", {}).get("result", [{}])[0]
+        ts = data.get("timestamp", [])
+        closes = data.get("indicators", {}).get("quote", [{}])[0].get("close", [])
+        if not ts or not closes:
+            return pd.DataFrame()
+        df = pd.DataFrame({"date": pd.to_datetime(ts, unit="s"), "close": closes})
+        df["date"] = df["date"].dt.normalize()
+        return df.dropna().reset_index(drop=True)
+    except Exception as e:
+        print(f"  Warning: Yahoo Finance {ticker}: {e}")
+        return pd.DataFrame()
+
+brent = fetch_yahoo_energy("BZ=F", "ytd")
+henryhub = fetch_yahoo_energy("NG=F", "ytd")
+
 print("Data ready.\n")
 
 
@@ -304,6 +327,29 @@ if not fuel_ts.empty:
             diesel_market_val = f"RM {float(last_fuel['diesel']):.2f}"
         fuel_date_str = last_fuel["date"].strftime("%d %b %Y") if "date" in fuel_levels.columns else ""
 
+# Energy benchmarks — Brent and Henry Hub with YTD and since-Feb-28 changes
+def energy_kpi(df, label):
+    """Compute current price, YTD change, and change since Feb 28."""
+    if df.empty:
+        return "N/A", "", "", ""
+    current = df.iloc[-1]["close"]
+    ytd_start = df.iloc[0]["close"]
+    ytd_chg = ((current / ytd_start) - 1) * 100
+
+    feb28 = pd.to_datetime("2026-02-28")
+    since_feb = df[df["date"] >= feb28]
+    feb_chg_str = ""
+    if not since_feb.empty:
+        feb_start = since_feb.iloc[0]["close"]
+        feb_chg = ((current / feb_start) - 1) * 100
+        feb_chg_str = f"Since 28 Feb: {feb_chg:+.1f}%"
+
+    date_str = df.iloc[-1]["date"].strftime("%d %b %Y")
+    return f"${current:.2f}", f"YTD: {ytd_chg:+.1f}%", feb_chg_str, date_str
+
+brent_val, brent_ytd, brent_feb, brent_date = energy_kpi(brent, "Brent")
+ng_val, ng_ytd, ng_feb, ng_date = energy_kpi(henryhub, "Henry Hub")
+
 
 # ── Layout helpers ────────────────────────────────────────────────────────────
 
@@ -444,18 +490,26 @@ app.layout = html.Div(style={
         ),
     ], style={"marginBottom": "20px"}),
 
-    # ── KPI Row ───────────────────────────────────────────────────────────────
+    # ── KPI Row 1 — Macro snapshot ──────────────────────────────────────────
     html.Div([
         card(kpi("USD/MYR", usd_val, f"{usd_chg}  ({usd_date})",
                  COLORS["down"] if usd_chg.startswith("+") else COLORS["up"]), {"flex": "1"}),
         card(kpi("Headline CPI (YoY)", headline_val, headline_date, COLORS["accent"]), {"flex": "1"}),
         card(kpi("Transport CPI (YoY)", transport_val, transport_date, COLORS["orange"]), {"flex": "1"}),
         card(kpi("Food CPI (YoY)", food_val, food_date, COLORS["gold"]), {"flex": "1"}),
+    ], style={"display": "flex", "gap": "12px", "marginBottom": "8px", "flexWrap": "wrap"}),
+
+    # KPI Row 2 — Energy benchmarks
+    html.Div([
+        card(kpi("Brent Crude", brent_val, f"{brent_ytd}  |  {brent_feb}\n{brent_date}",
+                 COLORS["accent"]), {"flex": "1"}),
+        card(kpi("Henry Hub NG", ng_val, f"{ng_ytd}  |  {ng_feb}\n{ng_date}",
+                 COLORS["gold"]), {"flex": "1"}),
         card(kpi("Fuel Trade Balance", petro_bal_val, f"SITC 3 · {petro_bal_date}", COLORS["green"]), {"flex": "1"}),
         card(kpi("OPR", opr_val, opr_date, COLORS["secondary"]), {"flex": "1"}),
     ], style={"display": "flex", "gap": "12px", "marginBottom": "8px", "flexWrap": "wrap"}),
 
-    # KPI Row 2 — fuel prices (subsidized + market)
+    # KPI Row 3 — fuel prices (subsidized + market)
     html.Div([
         card(kpi("RON95 (BUDI)", ron95_val, f"Subsidized · {fuel_date_str}", COLORS["green"]), {"flex": "1"}),
         card(kpi("RON95 (Market)", ron95_market_val, f"Ceiling · {fuel_date_str}", COLORS["orange"]), {"flex": "1"}),
@@ -469,6 +523,13 @@ app.layout = html.Div(style={
     # ══════════════════════════════════════════════════════════════════════════
     section_header("USD/MYR Daily Tracker",
                    "Year-to-date and since Iran bombing (late February 2026)  |  Source: BNM daily rates"),
+
+    html.Div(
+        "The ringgit is a commodity-linked currency sensitive to oil prices, risk aversion, and US dollar strength. "
+        "The daily tracker captures immediate FX market reaction to the Iran bombing and subsequent geopolitical developments.",
+        style={"color": COLORS["subtext"], "fontSize": "11px", "lineHeight": "1.5",
+               "marginBottom": "12px"}
+    ),
 
     html.Div([
         card([
@@ -493,6 +554,13 @@ app.layout = html.Div(style={
     # ══════════════════════════════════════════════════════════════════════════
     section_header("1. Exchange Rate & Capital Flows",
                    "MYR sensitivity to global risk aversion and oil prices"),
+
+    html.Div(
+        "The MYR typically weakens when global risk aversion rises (flight to USD) but benefits from higher oil prices "
+        "as a net energy exporter. The SAR/MYR rate proxies Gulf economic linkages — remittance flows and bilateral trade.",
+        style={"color": COLORS["subtext"], "fontSize": "11px", "lineHeight": "1.5",
+               "marginBottom": "12px"}
+    ),
 
     html.Div([
         card([
@@ -548,6 +616,14 @@ app.layout = html.Div(style={
     # ══════════════════════════════════════════════════════════════════════════
     section_header("2. Inflation & Domestic Prices",
                    "CPI, PPI & fuel prices — pass-through from energy and import costs"),
+
+    html.Div(
+        "Transport CPI is the most direct pass-through channel from energy prices. Food inflation captures indirect effects "
+        "via logistics and imported input costs. The headline-core gap signals whether price pressure is supply-driven (energy) "
+        "or demand-driven. PPI leads CPI by 1-3 months as producer costs pass through to consumers.",
+        style={"color": COLORS["subtext"], "fontSize": "11px", "lineHeight": "1.5",
+               "marginBottom": "12px"}
+    ),
 
     html.Div([
         card([
@@ -612,6 +688,14 @@ app.layout = html.Div(style={
     section_header("3. Trade & External Sector",
                    "Petroleum trade balance, overall trade — terms-of-trade channel"),
 
+    html.Div(
+        "Malaysia is a net energy exporter — higher oil prices improve the mineral fuels trade balance (SITC 3). "
+        "However, sustained conflict can disrupt shipping through the Strait of Malacca and raise freight costs, "
+        "offsetting price gains. The overall trade balance reflects both direct energy effects and broader demand shifts.",
+        style={"color": COLORS["subtext"], "fontSize": "11px", "lineHeight": "1.5",
+               "marginBottom": "12px"}
+    ),
+
     html.Div([
         card([
             html.H3("Overall Trade Balance  (RM)",
@@ -652,6 +736,13 @@ app.layout = html.Div(style={
     # ══════════════════════════════════════════════════════════════════════════
     section_header("4. Real Activity",
                    "GDP — demand-side impact of the conflict"),
+
+    html.Div(
+        "GDP is a lagging indicator but captures the net demand-side impact. Conflict-driven energy price spikes "
+        "can boost mining sector output while weighing on manufacturing and consumer spending through higher input costs.",
+        style={"color": COLORS["subtext"], "fontSize": "11px", "lineHeight": "1.5",
+               "marginBottom": "12px"}
+    ),
 
     card([
         html.H3("GDP Growth  (% YoY, Quarterly)",
@@ -918,8 +1009,6 @@ def usd_myr_chart(range_val, _):
         x=df["date"], y=df["usd_myr"],
         mode="lines",
         line=dict(color=COLORS["secondary"], width=2),
-        fill="tozeroy",
-        fillcolor="rgba(41,128,185,0.1)",
         hovertemplate="<b>%{x|%b %Y}</b><br>USD/MYR: %{y:.4f}<extra></extra>",
     ))
 
@@ -940,6 +1029,10 @@ def usd_myr_chart(range_val, _):
                              yshift=10)
 
     fig.update_layout(**LAYOUT, yaxis_title="MYR per USD")
+    # Dynamic y-axis range with padding
+    ymin, ymax = df["usd_myr"].min(), df["usd_myr"].max()
+    pad = (ymax - ymin) * 0.1 or 0.05
+    fig.update_yaxes(range=[ymin - pad, ymax + pad])
     return fig
 
 
@@ -957,11 +1050,13 @@ def sar_myr_chart(_):
         x=df["date"], y=df["sar_myr"],
         mode="lines",
         line=dict(color=COLORS["gold"], width=2),
-        fill="tozeroy",
-        fillcolor="rgba(243,156,18,0.1)",
         hovertemplate="<b>%{x|%b %Y}</b><br>SAR/MYR: %{y:.4f}<extra></extra>",
     ))
     fig.update_layout(**LAYOUT, yaxis_title="MYR per SAR")
+    # Dynamic y-axis range with padding
+    ymin, ymax = df["sar_myr"].min(), df["sar_myr"].max()
+    pad = (ymax - ymin) * 0.1 or 0.01
+    fig.update_yaxes(range=[ymin - pad, ymax + pad])
     return fig
 
 
