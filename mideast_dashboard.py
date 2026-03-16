@@ -555,14 +555,14 @@ app.layout = html.Div(style={
               "maxWidth": "100%", "flexWrap": "wrap"}),
 
     # ══════════════════════════════════════════════════════════════════════════
-    # SPOTLIGHT: USD/MYR DAILY TRACKING (YTD & Since Iran Bombing)
+    # SPOTLIGHT: USD/MYR DAILY TRACKING (YTD & Since ME Conflict Escalation)
     # ══════════════════════════════════════════════════════════════════════════
     section_header("USD/MYR Daily Tracker",
-                   "Year-to-date and since Iran bombing (late February 2026)  |  Source: BNM daily rates"),
+                   "Year-to-date and since Middle East conflict escalation (late February 2026)  |  Source: BNM daily rates"),
 
     html.Div(
         "The ringgit is a commodity-linked currency sensitive to oil prices, risk aversion, and US dollar strength. "
-        "The daily tracker captures immediate FX market reaction to the Iran bombing and subsequent geopolitical developments.",
+        "The daily tracker captures immediate FX market reaction to the Middle East conflict escalation and subsequent geopolitical developments.",
         style={"color": COLORS["subtext"], "fontSize": "11px", "lineHeight": "1.5",
                "marginBottom": "12px"}
     ),
@@ -577,7 +577,7 @@ app.layout = html.Div(style={
         ], {"flex": "1"}),
 
         card([
-            html.H3("USD/MYR — Since Iran Bombing (25 Feb 2026)",
+            html.H3("USD/MYR — Since ME Conflict Escalation (25 Feb 2026)",
                     style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
                            "fontWeight": "600", "textTransform": "uppercase"}),
             dcc.Graph(id="usd-myr-iran", style={"height": "340px"},
@@ -976,10 +976,10 @@ def usd_myr_ytd(_):
         hoverinfo="skip",
     ))
 
-    # Iran bombing marker
+    # ME conflict escalation marker
     fig.add_vline(x=iran_date, line_dash="dash", line_color=COLORS["accent"], line_width=1.5)
     fig.add_annotation(x=iran_date, y=df["mid"].max(),
-                      text="Iran bombing", showarrow=True, arrowhead=2,
+                      text="ME conflict\nescalation", showarrow=True, arrowhead=2,
                       font=dict(color=COLORS["accent"], size=10),
                       arrowcolor=COLORS["accent"], yshift=10)
 
@@ -1003,7 +1003,7 @@ def usd_myr_ytd(_):
     return fig
 
 
-# --- USD/MYR Daily Tracker: Since Iran Bombing ---
+# --- USD/MYR Daily Tracker: Since ME Conflict Escalation ---
 @app.callback(Output("usd-myr-iran", "figure"), Input("refresh-interval", "n_intervals"))
 def usd_myr_iran(_):
     fig = go.Figure()
@@ -1055,10 +1055,10 @@ def usd_myr_iran(_):
         hovertemplate="<b>%{x|%d %b %Y}</b><br>Mid: %{y:.4f}<extra></extra>",
     ))
 
-    # Iran bombing marker
+    # ME conflict escalation marker
     fig.add_vline(x=iran_date, line_dash="dash", line_color=COLORS["accent"], line_width=1.5)
     fig.add_annotation(x=iran_date, y=df["mid"].max(),
-                      text="Iran bombing", showarrow=True, arrowhead=2,
+                      text="ME conflict\nescalation", showarrow=True, arrowhead=2,
                       font=dict(color=COLORS["accent"], size=10),
                       arrowcolor=COLORS["accent"], yshift=10)
 
@@ -1113,7 +1113,7 @@ def usd_myr_chart(range_val, _):
     # Add key event annotations if in range
     events = [
         ("2023-10-07", "Hamas attack"),
-        ("2024-04-13", "Iran strikes"),
+        ("2024-04-13", "ME escalation"),
         ("2024-10-01", "Lebanon ops"),
     ]
     for date_str, label in events:
@@ -1213,7 +1213,7 @@ def cpi_components(_):
             ))
 
     # Event annotations
-    events = [("2023-10-07", "Hamas"), ("2024-04-13", "Iran")]
+    events = [("2023-10-07", "ME conflict"), ("2024-04-13", "ME escalation")]
     for date_str, label in events:
         fig.add_vline(x=pd.to_datetime(date_str), line_dash="dot",
                      line_color=COLORS["accent"], line_width=1)
@@ -1583,12 +1583,12 @@ def trade_composition(_):
             hovertemplate=f"<b>{label}</b><br>%{{x|%b %Y}}: RM%{{y:.1f}}bn<extra></extra>",
         ))
 
-    # Iran bombing event marker with label
+    # ME conflict escalation event marker with label
     iran_date = pd.to_datetime("2026-02-25")
     if not d.empty and iran_date >= d["date"].min():
         fig.add_vline(x=iran_date, line_dash="dot", line_color=COLORS["accent"], line_width=1)
         fig.add_annotation(x=iran_date, y=d["exports"].max() / 1e9 * 0.95,
-                          text="Iran bombing\n25 Feb 2026", showarrow=False,
+                          text="ME conflict\nescalation\n25 Feb 2026", showarrow=False,
                           font=dict(color=COLORS["accent"], size=9))
 
     fig.update_layout(**LAYOUT, yaxis_title="RM billion")
