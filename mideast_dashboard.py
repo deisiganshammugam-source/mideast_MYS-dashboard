@@ -1123,19 +1123,26 @@ def usd_myr_iran(_):
                       font=dict(color=COLORS["accent"], size=10),
                       arrowcolor=COLORS["accent"], yshift=10)
 
-    # Pre vs post event
+    # Pre vs post event with percentage change
     pre = df[df["date"] < iran_date]
     post = df[df["date"] >= iran_date]
     if not pre.empty and not post.empty:
         pre_avg = pre["mid"].mean()
         post_avg = post["mid"].mean()
         chg = post_avg - pre_avg
+        pct_chg = (chg / pre_avg) * 100
+        # Rate on event date vs latest
+        event_rate = post.iloc[0]["mid"]
+        latest_rate = post.iloc[-1]["mid"]
+        since_chg = latest_rate - event_rate
+        since_pct = (since_chg / event_rate) * 100
+        chg_color = COLORS["down"] if since_pct > 0 else COLORS["up"]
         fig.add_annotation(
-            text=f"Pre-event avg: {pre_avg:.4f}<br>"
-                 f"Post-event avg: {post_avg:.4f}<br>"
-                 f"Shift: {chg:+.4f}",
+            text=f"On 25 Feb: {event_rate:.4f}<br>"
+                 f"Latest: {latest_rate:.4f}<br>"
+                 f"Change: {since_chg:+.4f} ({since_pct:+.1f}%)",
             xref="paper", yref="paper", x=0.98, y=0.98,
-            showarrow=False, font=dict(color=COLORS["text"], size=11),
+            showarrow=False, font=dict(color=chg_color, size=11),
             align="right", bgcolor="rgba(0,0,0,0.5)", borderpad=6,
         )
 
