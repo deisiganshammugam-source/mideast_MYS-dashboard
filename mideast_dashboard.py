@@ -142,43 +142,12 @@ else:
     if not ttf.empty:
         ttf["close"] = (ttf["close"] / 3.412) * 1.08
 
-# 9. Fertilizer prices from World Bank Pink Sheet (monthly, $/mt)
-def fetch_wb_fertilizer():
-    """Fetch Urea, DAP, Potash from WB Commodity Price Data (Pink Sheet)."""
-    try:
-        url = ("https://thedocs.worldbank.org/en/doc/"
-               "74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/"
-               "CMO-Historical-Data-Monthly.xlsx")
-        r = requests.get(url, timeout=30)
-        if r.status_code != 200:
-            print(f"  Warning: WB Pink Sheet returned {r.status_code}")
-            return pd.DataFrame()
-        import io
-        df = pd.read_excel(io.BytesIO(r.content), sheet_name="Monthly Prices", header=None)
-        # Col 0=date (2026M02), 58=DAP, 60=Urea, 61=Potash
-        rows = []
-        for i in range(6, len(df)):
-            date_str = str(df.iloc[i, 0])
-            if len(date_str) >= 7 and "M" in date_str:
-                try:
-                    dt = pd.to_datetime(date_str.replace("M", "-"), format="%Y-%m")
-                    rows.append({
-                        "date": dt,
-                        "urea": pd.to_numeric(df.iloc[i, 60], errors="coerce"),
-                        "dap": pd.to_numeric(df.iloc[i, 58], errors="coerce"),
-                        "potash": pd.to_numeric(df.iloc[i, 61], errors="coerce"),
-                    })
-                except Exception:
-                    pass
-        if not rows:
-            return pd.DataFrame()
-        result = pd.DataFrame(rows)
-        return result[result["date"] >= "2020-01-01"].reset_index(drop=True)
-    except Exception as e:
-        print(f"  Warning: WB fertilizer fetch failed: {e}")
-        return pd.DataFrame()
-
-fertilizer = fetch_wb_fertilizer()
+# 9. Fertilizer prices (from Supabase, originally sourced from WB Pink Sheet)
+fertilizer = load_supabase("fertilizer", date_gte="2020-01-01")
+if not fertilizer.empty:
+    for col in ["urea", "dap", "potash"]:
+        if col in fertilizer.columns:
+            fertilizer[col] = pd.to_numeric(fertilizer[col], errors="coerce")
 
 print("Data ready.\n")
 
