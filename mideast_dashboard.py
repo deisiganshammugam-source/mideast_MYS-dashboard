@@ -142,6 +142,44 @@ else:
     if not ttf.empty:
         ttf["close"] = (ttf["close"] / 3.412) * 1.08
 
+# 9. Fertilizer prices from World Bank Pink Sheet (monthly, $/mt)
+def fetch_wb_fertilizer():
+    """Fetch Urea, DAP, Potash from WB Commodity Price Data (Pink Sheet)."""
+    try:
+        url = ("https://thedocs.worldbank.org/en/doc/"
+               "74e8be41ceb20fa0da750cda2f6b9e4e-0050012026/related/"
+               "CMO-Historical-Data-Monthly.xlsx")
+        r = requests.get(url, timeout=30)
+        if r.status_code != 200:
+            print(f"  Warning: WB Pink Sheet returned {r.status_code}")
+            return pd.DataFrame()
+        import io
+        df = pd.read_excel(io.BytesIO(r.content), sheet_name="Monthly Prices", header=None)
+        # Col 0=date (2026M02), 58=DAP, 60=Urea, 61=Potash
+        rows = []
+        for i in range(6, len(df)):
+            date_str = str(df.iloc[i, 0])
+            if len(date_str) >= 7 and "M" in date_str:
+                try:
+                    dt = pd.to_datetime(date_str.replace("M", "-"), format="%Y-%m")
+                    rows.append({
+                        "date": dt,
+                        "urea": pd.to_numeric(df.iloc[i, 60], errors="coerce"),
+                        "dap": pd.to_numeric(df.iloc[i, 58], errors="coerce"),
+                        "potash": pd.to_numeric(df.iloc[i, 61], errors="coerce"),
+                    })
+                except Exception:
+                    pass
+        if not rows:
+            return pd.DataFrame()
+        result = pd.DataFrame(rows)
+        return result[result["date"] >= "2020-01-01"].reset_index(drop=True)
+    except Exception as e:
+        print(f"  Warning: WB fertilizer fetch failed: {e}")
+        return pd.DataFrame()
+
+fertilizer = fetch_wb_fertilizer()
+
 print("Data ready.\n")
 
 
@@ -394,6 +432,22 @@ wti_val, wti_ytd, wti_feb, wti_date = energy_kpi(wti, "WTI")
 ng_val, ng_ytd, ng_feb, ng_date = energy_kpi(henryhub, "Henry Hub")
 ttf_val, ttf_ytd, ttf_feb, ttf_date = energy_kpi(ttf, "TTF")
 
+# Fertilizer KPI — Urea (most gas-sensitive, most relevant for Malaysia)
+urea_val, urea_sub = "N/A", ""
+if not fertilizer.empty and "urea" in fertilizer.columns:
+    fert_clean = fertilizer.dropna(subset=["urea"])
+    if not fert_clean.empty:
+        latest_urea = fert_clean.iloc[-1]["urea"]
+        urea_val = f"${latest_urea:.0f}/mt"
+        urea_date = fert_clean.iloc[-1]["date"].strftime("%b %Y")
+        # YTD change
+        jan26 = fert_clean[fert_clean["date"] >= "2026-01-01"]
+        if len(jan26) >= 2:
+            ytd_pct = ((jan26.iloc[-1]["urea"] / jan26.iloc[0]["urea"]) - 1) * 100
+            urea_sub = f"YTD: {ytd_pct:+.1f}%  |  {urea_date}"
+        else:
+            urea_sub = urea_date
+
 
 # ── Layout helpers ────────────────────────────────────────────────────────────
 
@@ -601,6 +655,9 @@ app.layout = html.Div(style={
                   COLORS["purple"]),
               html.Div("Source: Yahoo Finance (TTF=F)", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
              {"flex": "1"}),
+        card([kpi("Urea (Fertilizer)", urea_val, urea_sub, COLORS["green"]),
+              html.Div("Source: WB Pink Sheet", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
         card([kpi("Fuel Trade Balance", petro_bal_val, f"SITC 3 · {petro_bal_date}", COLORS["green"]),
               html.Div("Source: DOSM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
              {"flex": "1"}),
@@ -690,6 +747,43 @@ app.layout = html.Div(style={
             html.Div("Source: Yahoo Finance (TTF=F, NG=F)", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"}),
         ], {"flex": "1"}),
     ], style={"display": "flex", "gap": "16px", "marginBottom": "20px", "flexWrap": "wrap"}),
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SPOTLIGHT: COMMODITY INPUT COSTS (FERTILIZER)
+    # ══════════════════════════════════════════════════════════════════════════
+    section_header("Commodity Input Costs",
+                   "Fertilizer prices — palm oil production cost channel  |  Source: World Bank Pink Sheet"),
+
+    html.Div(
+        "Malaysia is a net fertilizer importer. Urea production is ~80% natural gas cost, so gas price spikes "
+        "feed directly into fertilizer prices with a 2–4 week lag. Palm oil plantations are the largest domestic "
+        "fertilizer consumers — higher fertilizer costs raise CPO production costs and can pass through to food inflation.",
+        style={"color": COLORS["subtext"], "fontSize": "11px", "lineHeight": "1.5",
+               "marginBottom": "12px"}
+    ),
+
+    card([
+        html.H3("Fertilizer Prices — Urea, DAP & Potash  ($/mt, monthly)",
+                style={"margin": "0 0 8px", "fontSize": "13px", "color": COLORS["subtext"],
+                       "fontWeight": "600", "textTransform": "uppercase"}),
+        dcc.Dropdown(
+            id="fertilizer-range",
+            options=[
+                {"label": "Last 12 months", "value": "12M"},
+                {"label": "Last 2 years", "value": "2Y"},
+                {"label": "Since 2020", "value": "2020"},
+                {"label": "All", "value": "ALL"},
+            ],
+            value="2Y",
+            clearable=False,
+            style={"background": COLORS["card"], "color": "#000",
+                   "marginBottom": "8px", "maxWidth": "180px"},
+        ),
+        dcc.Graph(id="fertilizer-chart", style={"height": "360px"},
+                  config={"displayModeBar": False}),
+        html.Div("Source: World Bank Commodity Price Data (Pink Sheet)",
+                 style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"}),
+    ], {"marginBottom": "20px"}),
 
     # ══════════════════════════════════════════════════════════════════════════
     # SECTION 1: EXCHANGE RATE & CAPITAL FLOWS
@@ -1334,6 +1428,75 @@ def gas_prices_chart(_):
         )
 
     fig.update_layout(**LAYOUT, yaxis_title="$/MMBtu")
+    return fig
+
+
+# --- Fertilizer Prices ---
+@app.callback(Output("fertilizer-chart", "figure"),
+              [Input("fertilizer-range", "value"), Input("refresh-interval", "n_intervals")])
+def fertilizer_chart(range_val, _):
+    fig = go.Figure()
+    if fertilizer.empty:
+        fig.add_annotation(text="No fertilizer data — WB Pink Sheet unavailable",
+                          xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False,
+                          font=dict(color=COLORS["subtext"]))
+        fig.update_layout(**LAYOUT)
+        return fig
+
+    df = fertilizer.copy()
+    if range_val == "12M":
+        df = df[df["date"] >= datetime.now() - timedelta(days=365)]
+    elif range_val == "2Y":
+        df = df[df["date"] >= datetime.now() - timedelta(days=730)]
+    elif range_val != "ALL":
+        df = df[df["date"] >= datetime(int(range_val), 1, 1)]
+
+    feb28 = pd.to_datetime("2026-02-28")
+    series = [
+        ("urea", "Urea", COLORS["gold"]),
+        ("dap", "DAP (Phosphate)", COLORS["accent"]),
+        ("potash", "Potash (KCl)", COLORS["green"]),
+    ]
+
+    offsets = [(50, -10), (50, -35), (50, 15)]
+    for i, (col, name, color) in enumerate(series):
+        if col not in df.columns:
+            continue
+        d = df[["date", col]].dropna()
+        if d.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=d["date"], y=d[col],
+            mode="lines+markers", name=name,
+            line=dict(color=color, width=2.5),
+            marker=dict(size=4, color=color),
+            hovertemplate=f"<b>{name}</b><br>%{{x|%b %Y}}: $%{{y:.0f}}/mt<extra></extra>",
+        ))
+        # Mark latest
+        last = d.iloc[-1]
+        ax, ay = offsets[i]
+        fig.add_trace(go.Scatter(
+            x=[last["date"]], y=[last[col]], mode="markers",
+            marker=dict(size=10, color=color, line=dict(width=2, color="white")),
+            showlegend=False, hoverinfo="skip",
+        ))
+        fig.add_annotation(
+            x=last["date"], y=last[col],
+            text=f"<b>{name}: ${last[col]:.0f}</b>",
+            showarrow=True, arrowhead=0, arrowcolor=color,
+            ax=ax, ay=ay,
+            font=dict(color=color, size=10),
+            bgcolor="rgba(0,0,0,0.6)", borderpad=3,
+        )
+
+    # ME conflict escalation marker
+    if not df.empty and feb28 >= df["date"].min() and feb28 <= df["date"].max() + timedelta(days=60):
+        fig.add_vline(x=feb28, line_dash="dash", line_color=COLORS["accent"], line_width=1.5)
+        fig.add_annotation(x=feb28, y=0.98, yref="paper",
+                          text="ME conflict\nescalation", showarrow=False,
+                          font=dict(color=COLORS["accent"], size=9))
+
+    fig.update_layout(**LAYOUT, yaxis_title="$/mt")
     return fig
 
 
