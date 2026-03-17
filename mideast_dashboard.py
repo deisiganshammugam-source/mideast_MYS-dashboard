@@ -1471,17 +1471,33 @@ def cpi_components(_):
         fig.add_vline(x=pd.to_datetime(date_str), line_dash="dot",
                      line_color=COLORS["accent"], line_width=1)
 
-    # Mark latest point for headline
-    for df, col, color, name in [
+    # Mark latest point for all series with staggered offsets to avoid overlap
+    offsets = [(50, -10), (50, -30), (50, 10), (50, 30)]
+    for i, (df, col, color, name) in enumerate([
         (cpi_overall, "headline_yoy", COLORS["secondary"], "Headline"),
         (cpi_transport, "transport_yoy", COLORS["orange"], "Transport"),
         (cpi_food, "food_yoy", COLORS["gold"], "Food"),
-    ]:
+        (cpi_housing, "housing_yoy", COLORS["purple"], "Housing"),
+    ]):
         if not df.empty:
             d = df[df["date"] >= cutoff].dropna(subset=[col])
             if not d.empty:
                 last = d.iloc[-1]
-                mark_latest(fig, last["date"], last[col], f"{last[col]:.1f}%", color)
+                ax, ay = offsets[i]
+                fig.add_trace(go.Scatter(
+                    x=[last["date"]], y=[last[col]], mode="markers",
+                    marker=dict(size=10, color=color, symbol="circle",
+                                line=dict(width=2, color="white")),
+                    showlegend=False, hoverinfo="skip",
+                ))
+                fig.add_annotation(
+                    x=last["date"], y=last[col],
+                    text=f"<b>{name}: {last[col]:.1f}%</b>",
+                    showarrow=True, arrowhead=0, arrowcolor=color,
+                    ax=ax, ay=ay,
+                    font=dict(color=color, size=10),
+                    bgcolor="rgba(0,0,0,0.6)", borderpad=3,
+                )
 
     fig.add_hline(y=0, line_dash="dash", line_color=COLORS["subtext"], line_width=1)
     fig.update_layout(**LAYOUT, yaxis_title="% YoY")
