@@ -124,7 +124,23 @@ def fetch_yahoo_energy(ticker, period="ytd"):
 brent = fetch_yahoo_energy("BZ=F", "1y")
 wti = fetch_yahoo_energy("CL=F", "1y")
 henryhub = fetch_yahoo_energy("NG=F", "1y")
-ttf = fetch_yahoo_energy("TTF=F", "1y")
+ttf_raw = fetch_yahoo_energy("TTF=F", "1y")
+
+# Convert TTF from EUR/MWh to $/MMBtu
+# 1 MWh = 3.412 MMBtu, so $/MMBtu = (EUR/MWh) / 3.412 * EUR_USD_rate
+eurusd = fetch_yahoo_energy("EURUSD=X", "1y")
+if not ttf_raw.empty and not eurusd.empty:
+    # Merge on date to get matching EUR/USD rates
+    ttf = ttf_raw.merge(eurusd[["date", "close"]].rename(columns={"close": "eurusd"}),
+                        on="date", how="left")
+    ttf["eurusd"] = ttf["eurusd"].ffill().bfill()  # fill weekends/holidays
+    ttf["close"] = (ttf["close"] / 3.412) * ttf["eurusd"]
+    ttf = ttf[["date", "close"]].dropna().reset_index(drop=True)
+else:
+    # Fallback: approximate with EUR/USD ~ 1.08
+    ttf = ttf_raw.copy()
+    if not ttf.empty:
+        ttf["close"] = (ttf["close"] / 3.412) * 1.08
 
 print("Data ready.\n")
 
