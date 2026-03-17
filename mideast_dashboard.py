@@ -121,8 +121,10 @@ def fetch_yahoo_energy(ticker, period="ytd"):
         print(f"  Warning: Yahoo Finance {ticker}: {e}")
         return pd.DataFrame()
 
-brent = fetch_yahoo_energy("BZ=F", "ytd")
-henryhub = fetch_yahoo_energy("NG=F", "ytd")
+brent = fetch_yahoo_energy("BZ=F", "1y")
+wti = fetch_yahoo_energy("CL=F", "1y")
+henryhub = fetch_yahoo_energy("NG=F", "1y")
+ttf = fetch_yahoo_energy("TTF=F", "1y")
 
 print("Data ready.\n")
 
@@ -372,7 +374,9 @@ def energy_kpi(df, label):
     return f"${current:.2f}", f"YTD: {ytd_chg:+.1f}%", feb_chg_str, date_str
 
 brent_val, brent_ytd, brent_feb, brent_date = energy_kpi(brent, "Brent")
+wti_val, wti_ytd, wti_feb, wti_date = energy_kpi(wti, "WTI")
 ng_val, ng_ytd, ng_feb, ng_date = energy_kpi(henryhub, "Henry Hub")
+ttf_val, ttf_ytd, ttf_feb, ttf_date = energy_kpi(ttf, "TTF")
 
 
 # ── Layout helpers ────────────────────────────────────────────────────────────
@@ -573,9 +577,13 @@ app.layout = html.Div(style={
                   COLORS["accent"]),
               html.Div("Source: Yahoo Finance (BZ=F)", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
              {"flex": "1"}),
-        card([kpi("Henry Hub NG", ng_val, f"{ng_ytd}  |  {ng_feb}\n{ng_date}",
+        card([kpi("Henry Hub NG (US)", ng_val, f"{ng_ytd}  |  {ng_feb}\n{ng_date}",
                   COLORS["gold"]),
               html.Div("Source: Yahoo Finance (NG=F)", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
+             {"flex": "1"}),
+        card([kpi("TTF NG (Europe)", ttf_val, f"{ttf_ytd}  |  {ttf_feb}\n{ttf_date}",
+                  COLORS["purple"]),
+              html.Div("Source: Yahoo Finance (TTF=F)", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
              {"flex": "1"}),
         card([kpi("Fuel Trade Balance", petro_bal_val, f"SITC 3 · {petro_bal_date}", COLORS["green"]),
               html.Div("Source: DOSM", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"})],
@@ -630,6 +638,40 @@ app.layout = html.Div(style={
                            "fontWeight": "600", "textTransform": "uppercase"}),
             dcc.Graph(id="usd-myr-iran", style={"height": "340px"},
                       config={"displayModeBar": False}),
+        ], {"flex": "1"}),
+    ], style={"display": "flex", "gap": "16px", "marginBottom": "20px", "flexWrap": "wrap"}),
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SPOTLIGHT: ENERGY PRICES
+    # ══════════════════════════════════════════════════════════════════════════
+    section_header("Global Energy Prices",
+                   "Oil and natural gas benchmarks — primary transmission channel from Middle East conflict"),
+
+    html.Div(
+        "Brent is the global oil benchmark most relevant for Malaysia (MOPS pricing is Brent-linked). "
+        "WTI reflects US market conditions. TTF is the European gas benchmark and best available proxy "
+        "for Asian LNG prices (JKM). Henry Hub reflects US domestic gas.",
+        style={"color": COLORS["subtext"], "fontSize": "11px", "lineHeight": "1.5",
+               "marginBottom": "12px"}
+    ),
+
+    html.Div([
+        card([
+            html.H3("Oil Prices — Brent & WTI  ($/bbl)",
+                    style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
+                           "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Graph(id="oil-prices-chart", style={"height": "340px"},
+                      config={"displayModeBar": False}),
+            html.Div("Source: Yahoo Finance (BZ=F, CL=F)", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"}),
+        ], {"flex": "1"}),
+
+        card([
+            html.H3("Natural Gas Prices — TTF & Henry Hub  ($/MMBtu)",
+                    style={"margin": "0 0 12px", "fontSize": "13px", "color": COLORS["subtext"],
+                           "fontWeight": "600", "textTransform": "uppercase"}),
+            dcc.Graph(id="gas-prices-chart", style={"height": "340px"},
+                      config={"displayModeBar": False}),
+            html.Div("Source: Yahoo Finance (TTF=F, NG=F)", style={"color": COLORS["border"], "fontSize": "9px", "marginTop": "4px"}),
         ], {"flex": "1"}),
     ], style={"display": "flex", "gap": "16px", "marginBottom": "20px", "flexWrap": "wrap"}),
 
@@ -1169,6 +1211,116 @@ def usd_myr_iran(_):
     return fig
 
 
+# --- Oil Prices: Brent & WTI ---
+@app.callback(Output("oil-prices-chart", "figure"), Input("refresh-interval", "n_intervals"))
+def oil_prices_chart(_):
+    fig = go.Figure()
+    feb28 = pd.to_datetime("2026-02-28")
+    jan1 = pd.to_datetime("2026-01-01")
+
+    for df, name, color in [(brent, "Brent Crude", COLORS["accent"]),
+                             (wti, "WTI Crude", COLORS["gold"])]:
+        if df.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=df["date"], y=df["close"],
+            mode="lines", name=name,
+            line=dict(color=color, width=2.5),
+            hovertemplate=f"<b>{name}</b><br>%{{x|%d %b %Y}}: $%{{y:.2f}}<extra></extra>",
+        ))
+        # YTD and since-28-Feb annotations
+        ytd_df = df[df["date"] >= jan1]
+        feb_df = df[df["date"] >= feb28]
+        if not ytd_df.empty:
+            ytd_chg = ((ytd_df.iloc[-1]["close"] / ytd_df.iloc[0]["close"]) - 1) * 100
+        if not feb_df.empty:
+            feb_chg = ((feb_df.iloc[-1]["close"] / feb_df.iloc[0]["close"]) - 1) * 100
+            mark_latest(fig, df.iloc[-1]["date"], df.iloc[-1]["close"],
+                       f"${df.iloc[-1]['close']:.1f}", color)
+
+    # ME conflict escalation marker
+    fig.add_vline(x=feb28, line_dash="dash", line_color=COLORS["accent"], line_width=1.5)
+    fig.add_annotation(x=feb28, y=0.98, yref="paper",
+                      text="ME conflict\nescalation", showarrow=False,
+                      font=dict(color=COLORS["accent"], size=9))
+
+    # YTD start marker
+    fig.add_vline(x=jan1, line_dash="dot", line_color=COLORS["subtext"], line_width=1)
+
+    # Summary box
+    summaries = []
+    for df, name in [(brent, "Brent"), (wti, "WTI")]:
+        if df.empty:
+            continue
+        ytd_df = df[df["date"] >= jan1]
+        feb_df = df[df["date"] >= feb28]
+        if not ytd_df.empty and not feb_df.empty:
+            ytd_pct = ((ytd_df.iloc[-1]["close"] / ytd_df.iloc[0]["close"]) - 1) * 100
+            feb_pct = ((feb_df.iloc[-1]["close"] / feb_df.iloc[0]["close"]) - 1) * 100
+            summaries.append(f"<b>{name}</b>: YTD {ytd_pct:+.1f}%  |  Since 28 Feb {feb_pct:+.1f}%")
+    if summaries:
+        fig.add_annotation(
+            text="<br>".join(summaries),
+            xref="paper", yref="paper", x=0.02, y=0.02,
+            showarrow=False, font=dict(size=10, color=COLORS["text"]),
+            align="left", bgcolor="rgba(0,0,0,0.6)", borderpad=6,
+        )
+
+    fig.update_layout(**LAYOUT, yaxis_title="$/bbl")
+    return fig
+
+
+# --- Gas Prices: TTF & Henry Hub ---
+@app.callback(Output("gas-prices-chart", "figure"), Input("refresh-interval", "n_intervals"))
+def gas_prices_chart(_):
+    fig = go.Figure()
+    feb28 = pd.to_datetime("2026-02-28")
+    jan1 = pd.to_datetime("2026-01-01")
+
+    for df, name, color in [(ttf, "TTF (Europe)", COLORS["purple"]),
+                             (henryhub, "Henry Hub (US)", COLORS["gold"])]:
+        if df.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=df["date"], y=df["close"],
+            mode="lines", name=name,
+            line=dict(color=color, width=2.5),
+            hovertemplate=f"<b>{name}</b><br>%{{x|%d %b %Y}}: $%{{y:.2f}}<extra></extra>",
+        ))
+        if not df.empty:
+            mark_latest(fig, df.iloc[-1]["date"], df.iloc[-1]["close"],
+                       f"${df.iloc[-1]['close']:.2f}", color)
+
+    # ME conflict escalation marker
+    fig.add_vline(x=feb28, line_dash="dash", line_color=COLORS["accent"], line_width=1.5)
+    fig.add_annotation(x=feb28, y=0.98, yref="paper",
+                      text="ME conflict\nescalation", showarrow=False,
+                      font=dict(color=COLORS["accent"], size=9))
+    fig.add_vline(x=jan1, line_dash="dot", line_color=COLORS["subtext"], line_width=1)
+
+    # Summary box
+    summaries = []
+    for df, name in [(ttf, "TTF"), (henryhub, "Henry Hub")]:
+        if df.empty:
+            continue
+        ytd_df = df[df["date"] >= jan1]
+        feb_df = df[df["date"] >= feb28]
+        if not ytd_df.empty and not feb_df.empty:
+            ytd_pct = ((ytd_df.iloc[-1]["close"] / ytd_df.iloc[0]["close"]) - 1) * 100
+            feb_pct = ((feb_df.iloc[-1]["close"] / feb_df.iloc[0]["close"]) - 1) * 100
+            summaries.append(f"<b>{name}</b>: YTD {ytd_pct:+.1f}%  |  Since 28 Feb {feb_pct:+.1f}%")
+    if summaries:
+        fig.add_annotation(
+            text="<br>".join(summaries),
+            xref="paper", yref="paper", x=0.02, y=0.02,
+            showarrow=False, font=dict(size=10, color=COLORS["text"]),
+            align="left", bgcolor="rgba(0,0,0,0.6)", borderpad=6,
+        )
+
+    fig.update_layout(**LAYOUT, yaxis_title="$/MMBtu")
+    return fig
+
+
 @app.callback(Output("usd-myr-chart", "figure"),
               [Input("fx-range", "value"), Input("refresh-interval", "n_intervals")])
 def usd_myr_chart(range_val, _):
@@ -1381,7 +1533,7 @@ def fuel_price_chart(_):
             x=df["date"], y=pd.to_numeric(df["ron95"], errors="coerce"),
             mode="lines", name="RON95 (Ceiling)",
             line=dict(color=RON95_COLOR, width=2.5),
-            hovertemplate="<b>RON95 Ceiling</b><br>%{x|%d %b %Y}: RM%{y:.2f}<extra></extra>",
+            hovertemplate="<b>RON95 Market</b><br>%{x|%d %b %Y}: RM%{y:.2f}<extra></extra>",
         ))
 
     # RON95 BUDI subsidized price (dashed, same color)
